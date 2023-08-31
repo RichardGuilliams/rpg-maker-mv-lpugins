@@ -110,41 +110,6 @@ Mythic.Core.ProcessDataMapTags = function(){
     
 };
 
-//=============================================================================
-// Value Processing
-//=============================================================================
-
-Mythic.Core.isNumber = function(value){
-    return typeof value === "number";
-}
-
-Mythic.Core.isString = function(value){
-    return typeof value === "string";
-}
-
-Mythic.Core.isBoolean = function(value){
-    return typeof value === "boolean";
-}
-
-Mythic.Core.isUndefined = function(value){
-    return typeof value === "undefined";
-}
-
-Mythic.Core.isBigInt = function(value){
-    return typeof value === "bigInt";
-}
-
-Mythic.Core.isSymbol = function(value){
-    return typeof value === "symbol";
-}
-
-Mythic.Core.isFunction = function(value){
-    return typeof value === "function";
-}
-
-Mythic.Core.isObject = function(value){
-    return typeof value === "object";
-}
 
 //=============================================================================
 // DataManager
@@ -182,8 +147,6 @@ Mythic.Core.PopulateDataArrays = function(){
 Mythic.Core.GetDataArray = function(dataArrayType){
     return Mythic.Core.DataArrays.get(dataArrayType);
 }
-
-console.log(Mythic.Core.GetDataArray('item'));
 
 //=============================================================================
 // Key Code
@@ -304,11 +267,11 @@ Mythic.Core.Keys = new Map([
  * 
  *  @return {object} return the current gameMap event that is triggering the game maps interpreter.
  *  @example
- *  function GetCurrentGameEvent(){
+ *  function GetCurrentEvent(){
  *       return $gameMap._events[$gameMap._interpreter._eventId];
  *  }
- */
-function GetCurrentGameEvent(){
+*/
+function GetCurrentEvent(){
     return $gameMap._events[$gameMap._interpreter._eventId];
 }
 
@@ -321,7 +284,7 @@ function GetCurrentGameEvent(){
  *  function GetCurrentDataEvent(){
  *      return $dataMap.events[$gameMap._interpreter._eventId]
  *  }
- */
+*/
 function GetCurrentDataEvent(){
     return $dataMap.events[$gameMap._interpreter._eventId]
 }
@@ -422,7 +385,6 @@ Mythic.Core.PopulateMapFromArray = function(arr, map){
         if(i == 0) return;
         map.set(el, i);
     })
-    console.log(map);
 }
 
 Mythic.Core.MakeArrFromPropertyInObjectArr = function(arr, propertyName){
@@ -451,7 +413,7 @@ Mythic.Core.PopulateTraitMaps = function(){
     
     //State Types
     Mythic.Core.PopulateMapFromArray($dataStates, Mythic.Core.StateTypes);
-
+    
 }
 
 
@@ -586,6 +548,11 @@ Mythic.Core.GetTraitValue = function(id, index){
 // Game_Map
 //================================================================
 
+Game_Map.prototype.LEFT = 4;
+Game_Map.prototype.RIGHT = 6;
+Game_Map.prototype.UP = 8;
+Game_Map.prototype.DOWN = 6;
+
 Game_Map.prototype.playerTiles = function() {
     let t1 = $gameMap.tileId($gamePlayer.x, $gamePlayer.x, 0);
     let t2 = $gameMap.tileId($gamePlayer.x, $gamePlayer.x, 1);
@@ -626,6 +593,19 @@ Game_Map.prototype.GetAllMapEventCoords = function(){
     })
 }
 
+Game_Map.prototype.GetAllEventDistancesToPlayer = function(){
+    return this._events.map((el, i) => { if(el) return el.DistanceToPlayer()});
+}
+
+Game_Map.prototype.isTilePassable = function(x, y){
+    const d1 = $gameMap.isPassable(x, y, 2);
+    const d2 = $gameMap.isPassable(x, y, 4);
+    const d3 = $gameMap.isPassable(x, y, 6);
+    const d4 = $gameMap.isPassable(x, y, 8);
+    if(d1 && d2 && d3 && d4) return true;
+    return false;
+}
+
 
 //================================================================
 // Game_Player
@@ -650,8 +630,8 @@ Game_Event.prototype.MoveSpeeds = new Map([
     ["slower", 1],
     ["slow", 2],
     ["normal", 3],
-    ["faster", 4],
-    ["fastest", 5]
+    ["fast", 4],
+    ["faster", 5]
 ]);
 
 Game_Event.prototype.MoveFrequencies = new Map([
@@ -685,7 +665,11 @@ Game_Event.prototype.DistanceToCoords = function(coords){
 }
 
 Game_Event.prototype.ChangeMoveType = function(moveType){
-    
+    this._moveType = this.MoveTypes.get(moveType);
+}
+
+Game_Event.prototype.ChangeMoveSpeed = function(moveSpeed){
+    this._moveSpeed = this.MoveSpeeds.get(moveSpeed);
 }
 
 //================================================================
@@ -714,6 +698,13 @@ Game_CharacterBase.prototype.coords = function(){
     return [this._x, this._y];
 }
 
+Game_CharacterBase.prototype.Directions = new Map([
+    [4, 'left'],
+    [6, 'right'],
+    [2, 'down'],
+    [8, 'up']
+]);
+
 //=============================================================================
 // Utils
 //=============================================================================
@@ -727,4 +718,48 @@ Mythic.Utils.Error = function(message){
 Mythic.Utils.MakePositive = function(number){
     if(number < 0) return number * -1;
     return number;
+}
+
+Mythic.Utils.ConvertStringToNumber = function(string){
+    return parseInt(string);
+}
+
+Mythic.Utils.DistanceBetweenCoords = function(coords1, coords2){
+    return this.MakePositive(coords1[0] - coords2[0]) + this.MakePositive(coords1[1] - coords2[1]);
+}
+
+//=============================================================================
+// Value Processing
+//=============================================================================
+
+Mythic.Utils.isNumber = function(value){
+    return typeof value === "number";
+}
+
+Mythic.Utils.isString = function(value){
+    return typeof value === "string";
+}
+
+Mythic.Utils.isBoolean = function(value){
+    return typeof value === "boolean";
+}
+
+Mythic.Utils.isUndefined = function(value){
+    return typeof value === "undefined";
+}
+
+Mythic.Utils.isBigInt = function(value){
+    return typeof value === "bigInt";
+}
+
+Mythic.Utils.isSymbol = function(value){
+    return typeof value === "symbol";
+}
+
+Mythic.Utils.isFunction = function(value){
+    return typeof value === "function";
+}
+
+Mythic.Utils.isObject = function(value){
+    return typeof value === "object";
 }
