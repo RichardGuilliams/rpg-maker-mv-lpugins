@@ -14,6 +14,7 @@ Mythic.Command = Mythic.Command || {};
 Mythic.Core = Mythic.Core || {};
 Mythic.Param = Mythic.Param || {};
 Mythic.Utils = Mythic.Utils || {};
+
 //=============================================================================
 /*: 
 * @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functianality for easier development..
@@ -77,22 +78,6 @@ PathNode.prototype.getSiblingNodesSorted = function(){
     return siblingNodes.sort((a, b) => a.CurrentDistance - b.CurrentDistance);
 }
 
-PathNode.prototype.getLeftNode = function(){
-    return this.leftNode;
-}
-
-PathNode.prototype.getRightNode = function(){
-    return this.rightNode;
-}
-
-PathNode.prototype.getTopNode = function(){
-    return this.topNode;
-}
-
-PathNode.prototype.getBottomNode = function(){
-    return this.bottomNode;
-}
-
 PathNode.prototype.setLeftDistance = function(){
     if(this.leftNode){
         this.leftDistance = Mythic.Utils.DistanceBetweenCoords([this.leftNode.x, this.leftNode.y], [this.parent.targetX, this.parent.targetY]);
@@ -117,36 +102,12 @@ PathNode.prototype.setBottomDistance = function(){
     }
 }
 
-PathNode.prototype.leftCloser = function(){
-
-};
-
-PathNode.prototype.rightCloser = function(){};
-
-PathNode.prototype.topCloser = function(){};
-
-PathNode.prototype.bottomCloser = function(){};
-
-PathNode.prototype.update = function(){
-    this.setBottomDistance();
-    this.setTopDistance();
-    this.setLeftDistance();
-    this.setRightDistance();
-    this.distances = [this.leftNode, this.rightNode, this.topNode, this.bottomNode];
-    if(this.baseNode) this.updateSearchList();
-};
-
 PathNode.prototype.startSearch = function(){
     this.parent.startingNode = this;
     this.baseNode = true;
     this.openList.push(this);
-    this.updateSearchList();
+    this.generateSearchList();
 };
-
-PathNode.prototype.closestNodes = function(){
-    const sortedDistances = this.distances.sort((a, b) => { return a.currentDistance - b.currentDistance; });
-    if(this.leftNode && sortedDistances[0] == this.leftDistance) this.leftActive = true;
-}
 
 PathNode.prototype.targetNode = function(){
     return this.parent.nodes.find(node => node.x === this.parent.targetX && node.y === this.parent.targetY);
@@ -160,7 +121,9 @@ PathNode.prototype.removeFromOpenList = function(node) {
     }
 };
 
-PathNode.prototype.updateSearchList = function(){
+
+//TODO Incorporate while loop here to ensure that the entire search takes place in a single run.
+PathNode.prototype.generateSearchList = function(){
     const closedList = this.parent.startingNode.closedList;
     const openList = this.parent.startingNode.openList;
     if(openList.length > 0 && closedList.indexOf(this.parent.startingNode.targetNode() == -1) && openList[0].constructor == PathNode){
@@ -182,24 +145,43 @@ PathNode.prototype.updateSearchList = function(){
 PathNode.prototype.findNodeChain = function(){
     const startingNode = this.parent.startingNode;
     const closedList = startingNode.closedList;
-    var index = closedList.indexOf(startingNode.targetNode()); 
+    const index = closedList.indexOf(startingNode.targetNode()); 
     var coordsList = [];
     closedList[index].createCoordList(coordsList);
     this.coordsList = coordsList.reverse();;
     console.log(this.coordsList);
 }
 
+//TODO Remove 1st and last elements of coordsList before entering while loop. These coords represent the tiles the Event and Target occupy.
+
 PathNode.prototype.createCoordList = function(coordsList) {
     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
     let currentNode = this;
-
+    
     while (currentNode && currentNode.parentNodeIndex > 0 && !visitedNodes.has(currentNode)) {
         coordsList.push([currentNode.x, currentNode.y]);
         visitedNodes.add(currentNode);
-        currentNode = this.parent.startingNode.closedList[currentNode.parentNodeIndex];
+        currentNode = this.closedList[currentNode.parentNodeIndex];
     }
 };
 
+PathNode.prototype.reset = function(){
+    this.parentNode = {};
+    this.parentNodeIndex = 0;
+    this.baseNode = false;
+    this.openList = [];
+    this.closedList = [];
+    this.coordsList = [];
+};
+
+PathNode.prototype.update = function(){
+    this.setBottomDistance();
+    this.setTopDistance();
+    this.setLeftDistance();
+    this.setRightDistance();
+    this.distances = [this.leftNode, this.rightNode, this.topNode, this.bottomNode];
+    if(this.baseNode) this.generateSearchList();
+};
 
 //=============================================================================
 // Pathfinder
@@ -231,7 +213,7 @@ Pathfinder.prototype.initialize = function(){
 Pathfinder.prototype.setup = function(){
     this.mapWidth = $gameMap.width();
     this.mapHeight = $gameMap.height();
-
+    
     this.createNodes();
     this.setupNodes();
 }
@@ -262,11 +244,27 @@ Pathfinder.prototype.createNodes = function(){
 }
     
 Pathfinder.prototype.shortestPathToTarget = function(){
-    const startingNode = this.nodes.find(node => node.x == this.parent._x && node.y == this.parent._y);
-    startingNode.startSearch();
+    this.setStartingNode();
+    this.startingNode.startSearch();
 }
 
+Pathfinder.prototype.setStartingNode = function(){
+    this.startingNode = this.nodes.find(node => node.x == this.parent._x && node.y == this.parent._y);
+}
+
+Pathfinder.prototype.restart = function(){
+    this.startingNode = {};
+    this.targetX = $gamePlayer._x;
+    this.targetY = $gamePlayer._y;
+    this.x = this.parent._x;
+    this.y = this.parent._y;
+    this.setStartingNode();
+    this.nodes.forEach( node => node.reset());
+    this.shortestPathToTarget();
+};
+
 Pathfinder.prototype.update = function(){
+    if(this.nodes.length ==0) return this.restart();
     this.nodes.forEach( node => {
         node.update();
     })
@@ -275,6 +273,9 @@ Pathfinder.prototype.update = function(){
         this.shortestPathToTarget();
     }
 }
+//=============================================================================
+// Game Event
+//=============================================================================
 
 Game_Event.prototype.createPathfinder = function(){
     this.pathfinder = new Pathfinder();

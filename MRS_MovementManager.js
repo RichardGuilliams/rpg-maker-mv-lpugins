@@ -86,6 +86,7 @@ Game_Event.prototype.moveTypeTowardPlayer = function() {
 Game_Event.prototype.moveOnPath = function(){
     // this.pathfinder.shortestPathToTarget();
     const coords = this.pathfinder.startingNode.coordsList
+    if(!coords) return;
     var direction = this.coordsToMovementRoute(coords);
     if(coords.length != 0 && this._x === coords[0][0] && this._y === coords[0][1]){
         this.pathfinder.startingNode.coordsList = this.pathfinder.startingNode.coordsList.unshift();
@@ -93,7 +94,7 @@ Game_Event.prototype.moveOnPath = function(){
     this._moveRoute.list = [
         {code: direction, indent: 0}
     ]
-
+    
 }
 
 Game_Character.prototype.updateRoutineMove = function() {
@@ -109,9 +110,10 @@ Game_Character.prototype.updateRoutineMove = function() {
     }
 };
 
+//TODO Place in the Pathfinder.prototype
 Game_Event.prototype.coordsToMovementRoute = function(coords){
     debugger;
-    if(coords.length == 0) return
+    if(!coords || coords.length == 0) return
     let directionList = [this.getDirectionCode(this._x, this._y, coords[0][0], coords[0][1])];
     coords.forEach((el, i, arr) => {
         if(i === arr.length - 1) return;
@@ -120,22 +122,20 @@ Game_Event.prototype.coordsToMovementRoute = function(coords){
     console.log(directionList);
 }
 
+//TODO Place in the Pathfinder.prototype
 Game_Event.prototype.getDirectionCode = function(x1, y1, x2, y2){
     if(x1 == x2){
         if(y1 > y2){
             // up
-            console.log('up')
             return 3
         }
         if(y1 < y2){
-            console.log('down')
             return 1
         }
     }
     if(y1 == y2){
         if(x1 > x2){
             // up
-            console.log('left')
             return 2
         }
         if(x1 < x2){
@@ -144,6 +144,7 @@ Game_Event.prototype.getDirectionCode = function(x1, y1, x2, y2){
     }
 }
 
+//TODO Place in the Pathfinder.prototype
 Game_Event.prototype.checkValidMove = function(){
     if(this.Directions.get(this._direction) === 'up') return
     if(this.Directions.get(this._direction) === 'right') return
@@ -176,7 +177,7 @@ Game_Event.prototype.canPass = function(x, y, d) {
 
 Game_Event.prototype.StartChase = function() {
     if(!this.moveParams.chaseStarted) this.moveParams.chaseStarted = true;
-    if(this.pathfinder) this.pathfinder.shortestPathToTarget();
+    if(this.pathfinder) this.pathfinder.restart();
     this._moveSpeed = this.moveParams.chaseSpeed;
     this._moveType = this.MoveTypes.get('approach');
     console.log('chase Started')
