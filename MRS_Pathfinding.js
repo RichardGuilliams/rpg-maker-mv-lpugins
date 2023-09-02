@@ -152,16 +152,15 @@ PathNode.prototype.findNodeChain = function(){
     console.log(this.coordsList);
 }
 
-//TODO Remove 1st and last elements of coordsList before entering while loop. These coords represent the tiles the Event and Target occupy.
+//TODO Remove 1st element of coordsList before entering while loop. it represents the tile the event occupies.
 
 PathNode.prototype.createCoordList = function(coordsList) {
     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
-    let currentNode = this;
     
-    while (currentNode && currentNode.parentNodeIndex > 0 && !visitedNodes.has(currentNode)) {
-        coordsList.push([currentNode.x, currentNode.y]);
-        visitedNodes.add(currentNode);
-        currentNode = this.closedList[currentNode.parentNodeIndex];
+    while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
+        coordsList.push([this.x, this.y]);
+        visitedNodes.add(this);
+        this = this.closedList[this.parentNodeIndex];
     }
 };
 
