@@ -14,7 +14,7 @@ Mythic.Param = Mythic.Param || {};
 
 //=============================================================================
 /*: 
-* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functianality for easier development..
+* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functionality for easier development..
 * @author Richard Guilliams
 *
 * @help 
@@ -185,17 +185,17 @@ function GetCurrentEvent(){
 }
 
 /**
- * 
- *  @return {object} returns the current dataMap event that is triggering the game maps interpreter.
- *  @example
- *  // If id of the triggering event is 1
- *  // $gameMap._interpreter._eventId = 1;
- *  function GetCurrentDataEvent(){
- *      return $dataMap.events[$gameMap._interpreter._eventId]
- *  }
+ *  @return {Game_Event} returns the index of the data event matching the name provided to it.
 */
-function GetCurrentDataEvent(){
-    return $dataMap.events[$gameMap._interpreter._eventId]
+function GetDataEventIndexByName(name){
+    return $dataMap.events.findIndex(function(event){
+        if(event)  return event.name == name
+    })
+}
+
+function GetEventByName(name){
+    let index = GetDataEventIndexByName(name);
+    return $gameMap._events[index];
 }
 
 //================================================================
@@ -267,7 +267,7 @@ Mythic.Core.GetEXPParamAccA = function(id){
 }
 
 Mythic.Core.GetEXPParamAccB = function(id){
-    return Mythic.Core.GetClassEXPParams(id)[1];
+    return Mythic.Core.GetClassEXPParams(id)[3];
 }
 
 //================================================================
@@ -289,6 +289,7 @@ Mythic.Core.GetLearningSkillId = function(id, index){
 };
 
 //================================================================
+
 Mythic.Core.PopulateMapFromArray = function(arr, map){
     arr.forEach((el, i) => {
         if(i == 0) return;
@@ -640,10 +641,6 @@ Mythic.Utils.DistanceBetweenCoords = function(coords1, coords2){
 //=============================================================================
 // Value Processing
 //=============================================================================
-
-Mythic.Utils.isObjectEmpty = function(object){
-    return object.keys(object).length > 0;
-}
 
 Mythic.Utils.isNumber = function(value){
     return typeof value === "number";

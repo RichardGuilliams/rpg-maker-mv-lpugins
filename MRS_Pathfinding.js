@@ -17,7 +17,7 @@ Mythic.Utils = Mythic.Utils || {};
 
 //=============================================================================
 /*: 
-* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functianality for easier development..
+* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functionality for easier development..
 * @author Richard Guilliams
 *
 * @help 
@@ -33,10 +33,21 @@ Mythic.Utils = Mythic.Utils || {};
 //=============================================================================
 // Plugin Command Processing
 //=============================================================================
+/**
+ * 
+ * @return 
+ */
 
+/**
+ * 
+ * @param {*} arguments - this command only has one element in its arguments. 
+ * this element is the name parameter and will be used to either set the target as the player or another event on the map.
+ */
 Mythic.Command.Pathfinder = function(arguments){
     target = {};
     if(arguments[0] === 'Player') target = $gamePlayer;
+    else target = GetEventByName(arguments[0]);
+
     GetCurrentEvent().createPathfinder();
     GetCurrentEvent().pathfinder.setTarget(target);
 };
@@ -49,7 +60,7 @@ function PathNode(){
 }
 
 PathNode.prototype.initialize = function(x, y){
-    this.parentNodeIndex = 0;
+    this.previousNodeIndex = 0;
     this.parentNode = {};
     this.currentDistance = 0;
     // this.baseNode = false;
@@ -68,10 +79,8 @@ PathNode.prototype.initialize = function(x, y){
     this.topDistance = 0;
     this.bottomNode = {};
     this.bottomDistance = 0;
+    this.cost = 0;
     this.distances = [];
-    // this.openList = [];
-    // this.closedList = [];
-    // this.coordList = [];
 };
 
 PathNode.prototype.CurrentDistance = function(){
@@ -107,73 +116,18 @@ PathNode.prototype.setBottomDistance = function(){
     }
 }
 
-
-// PathNode.prototype.startSearch = function(){
-//     this.parent.startingNode = this;
-//     this.baseNode = true;
-//     this.openList.push(this);
-//     this.generateSearchList();
-// };
-
-// PathNode.prototype.targetNode = function(){
-//     return this.parent.nodes.find(node => node.x === this.parent.targetX && node.y === this.parent.targetY);
-// }
-
-// PathNode.prototype.removeFromOpenList = function(node) {
-//     const index = this.parent.startingNode.openList.indexOf(node);
-//     if (index !== -1) {
-//         this.parent.startingNode.openList.splice(index, 1);
-//         this.parent.startingNode.closedList.push(node);
-//     }
-// };
-
-// PathNode.prototype.generateSearchList = function(){
-    //     const closedList = this.parent.startingNode.closedList;
-//     const openList = this.parent.startingNode.openList;
-//     if(openList.length > 0 && closedList.indexOf(this.parent.startingNode.targetNode == -1) && openList[0].constructor == PathNode){
-//         openList[0].getSiblingNodesSorted().forEach(node => {
-    //             if (node && node.constructor == PathNode && closedList.indexOf(node) == -1 && openList.indexOf(node) == -1) {
-//                 node.parentNode = this;
-//                 node.parentNodeIndex = closedList.length;
-//                 openList.push(node);
-//             }
-//         });
-//     }
-//     this.removeFromOpenList(openList[0]);
-//     if(closedList.indexOf(this.parent.startingNode.targetNode > -1) {
-//         this.generateCoordList();
-//         this.baseNode = false;
-//     }
-// };
-
-// PathNode.prototype.generateCoordList = function(){
-//     const startingNode = this.parent.startingNode;
-//     const closedList = startingNode.closedList;
-//     const index = closedList.indexOf(startingNode.targetNode; 
-//     var coordList = [];
-//     closedList[index].createCoordList(coordList);
-//     this.coordList = coordList.reverse();;
-//     console.log(this.coordList);
-// }
-
-// PathNode.prototype.createCoordList = function(coordList) {
-    //     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
-    
-//     while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
-//         coordList.push([this.x, this.y]);
-//         visitedNodes.add(this);
-//         currentNode = this.closedList[this.parentNodeIndex];
-//     }
-// };
-
 PathNode.prototype.reset = function(){
     this.parentNode = {};
-    this.parentNodeIndex = 0;
-    // this.baseNode = false;
-    // this.openList = [];
-    // this.closedList = [];
-    // this.coordList = [];
+    this.previousNodeIndex = 0;
 };
+
+PathNode.prototype.isNodeOccupied = function(){
+    // debugger;
+    // Need to account for if the events have _through set to true
+    if($gameMap.eventsXy(this.x, this.y).length > 0) return true;
+    if($gameMap.partyMemberXy(this.x, this.y).length > 0) return true;
+    return false;
+}
 
 PathNode.prototype.update = function(){
     this.setBottomDistance();
@@ -181,7 +135,6 @@ PathNode.prototype.update = function(){
     this.setLeftDistance();
     this.setRightDistance();
     this.distances = [this.leftNode, this.rightNode, this.topNode, this.bottomNode];
-    if(this.baseNode) this.generateSearchList();
 };
 
 //=============================================================================
@@ -274,6 +227,7 @@ PathNode.prototype.generateCoordList = function(){
 
 Pathfinder.prototype.setStartingNode = function(){
     this.startingNode = this.nodes.find(node => node.x == this.event._x && node.y == this.event._y);
+    this.startingNode.cost = this.startingNode.CurrentDistance();
 }
 
 Pathfinder.prototype.resetNodes = function(){
@@ -288,14 +242,18 @@ Pathfinder.prototype.createCoordList = function() {
     this.currentNode = this.closedList[this.closedList.length - 1];
     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
 
-    while (this.currentNode && this.currentNode.parentNodeIndex >= 0 && !visitedNodes.has(this.currentNode.parentNodeIndex)) {
+    while (this.currentNode && this.currentNode.previousNodeIndex >= 0 && !visitedNodes.has(this.currentNode.previousNodeIndex)) {
         this.coordList.push([this.currentNode.x, this.currentNode.y]);
-        visitedNodes.add(this.currentNode.parentNodeIndex);
-        this.currentNode = this.closedList[this.currentNode.parentNodeIndex];
+        visitedNodes.add(this.currentNode.previousNodeIndex);
+        this.currentNode = this.closedList[this.currentNode.previousNodeIndex];
     }
 
     this.coordList = this.coordList.reverse();
 };
+
+Pathfinder.prototype.findClosestPath = function(){
+
+}
 
 Pathfinder.prototype.removeFromOpenList = function(node) {
     const index = this.openList.indexOf(node);
@@ -320,9 +278,10 @@ Pathfinder.prototype.targetFound = function() {
 Pathfinder.prototype.generateSearchList = function(){
     while(this.closedList.indexOf(this.targetNode) == -1 && this.openList.length > 0){
         this.openList[0].getSiblingNodesSorted().forEach(node => {
-            if (node && node.constructor == PathNode && this.closedList.indexOf(node) == -1 && this.openList.indexOf(node) == -1) {
+            if (node && node.constructor == PathNode && this.closedList.indexOf(node) == -1 && this.openList.indexOf(node) == -1 && !node.isNodeOccupied()) {
                 node.parentNode = this.startingNode;
-                node.parentNodeIndex = this.closedList.length;
+                node.previousNodeIndex = this.closedList.length;
+                node.cost = this.nodes[node.previousNodeIndex].cost + 1 + node.CurrentDistance();
                 this.openList.push(node);
             }
         });
@@ -333,9 +292,26 @@ Pathfinder.prototype.generateSearchList = function(){
         this.createCoordList();
         this.baseNode = false;
     }
+    else this.findClosestPath();
+    // if the closedList does not contain the target node. we will have to generate a route to the closest node to the target node.
 };
+
+Pathfinder.prototype.findClosestPath = function(){
+    this.currentNode = this.closedList.sort(function(a, b){
+        return (a.cost + a.CurrentDistance()) - (b.cost + b.CurrentDistance())
+    })[0];
+    const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
+    while (this.currentNode && this.currentNode.previousNodeIndex >= 0 && !visitedNodes.has(this.currentNode.previousNodeIndex)) {
+        this.coordList.push([this.currentNode.x, this.currentNode.y]);
+        visitedNodes.add(this.currentNode.previousNodeIndex);
+        this.currentNode = this.closedList[this.currentNode.previousNodeIndex];
+    }
+
+    this.coordList = this.coordList.reverse();
+}
     
 Pathfinder.prototype.shortestPathToTarget = function(){
+    this.resetNodes();
     this.setStartingNode();
     this.startSearch();
 }
@@ -343,24 +319,32 @@ Pathfinder.prototype.shortestPathToTarget = function(){
 
 Pathfinder.prototype.restart = function(){
     this.startingNode = {};
-    this.targetX =      $gamePlayer._x;
-    this.targetY =      $gamePlayer._y;
-    this.x =            this.parent._x;
-    this.y =            this.parent._y;
+    this.coordList = [];
+    this.openList = [];
+    this.closedList = [];
+    this.targetX = $gamePlayer._x;
+    this.targetY = $gamePlayer._y;
+    this.x = this.parent._x;
+    this.y = this.parent._y;
     this.setStartingNode();
+    this.setTargetNode();
     this.resetNodes();
     this.shortestPathToTarget();
 };
 
-
-Pathfinder.prototype.update = function(){
-    if(this.nodes.length ==0) return this.restart();
+Pathfinder.prototype.updateNodes = function(){
     this.nodes.forEach( node => {
         node.update();
     })
-    if(!this.searchStarted && this.targetAcquired) {
+}
+
+
+Pathfinder.prototype.update = function(){
+    if(this.nodes.length == 0) return this.restart();
+    this.updateNodes();
+    if(!this.searchStarted && this.targetAcquired && this.coordList.length > 0) {
         this.searchStarted = true;
-        this.shortestPathToTarget();
+        this.restart();
     }
 }
 //=============================================================================
@@ -374,6 +358,7 @@ Game_Event.prototype.createPathfinder = function(){
     this.pathfinder.targetX = $gamePlayer._x;
     this.pathfinder.targetY = $gamePlayer._y;
     this.pathfinder.parent = this;
+    this.directionList = [];
 };
 
 
@@ -386,25 +371,89 @@ Game_Event.prototype.update = function(){
 
 Mythic.Pathfinder.GameEventMoveTowardPlayer = Game_Event.prototype.moveTypeTowardPlayer;
 Game_Event.prototype.moveTypeTowardPlayer = function() {
-    Mythic.Pathfinder.GameEventMoveTowardPlayer.call(this);
+    // Mythic.Pathfinder.GameEventMoveTowardPlayer.call(this);
     this.moveOnPath();
 };
 
-Game_Event.prototype.moveOnPath = function(){
-    // this.pathfinder.shortestPathToTarget();
-    const coords = this.pathfinder.coordList
-    if(!coords) return;
-    var direction = this.coordsToMovementRoute(coords);
-    if(coords.length != 0 && this._x === coords[0][0] && this._y === coords[0][1]){
-        this.pathfinder.startingNode.coordList = this.pathfinder.startingNode.coordList.unshift();
-    }
-    this._moveRoute.list = [
-        {code: direction, indent: 0}
-    ]
-    
+Game_Event.prototype.setDirectionList = function(){
+    this.directionList = this.coordsToMovementRoute(this.pathfinder.coordList);
 }
 
-//TODO Place in the Pathfinder.prototype
+Game_Event.prototype.moveOnPath = function(){
+    if(!this.directionList) this.setDirectionList();
+    this.updatePathfindingMovement();
+}
+
+Game_CharacterBase.prototype.updateMove = function() {
+    if (this._x < this._realX) {
+        this._realX = Math.max(this._realX - this.distancePerFrame(), this._x);
+    }
+    if (this._x > this._realX) {
+        this._realX = Math.min(this._realX + this.distancePerFrame(), this._x);
+    }
+    if (this._y < this._realY) {
+        this._realY = Math.max(this._realY - this.distancePerFrame(), this._y);
+    }
+    if (this._y > this._realY) {
+        this._realY = Math.min(this._realY + this.distancePerFrame(), this._y);
+    }
+    if (!this.isMoving()) {
+        this.refreshBushDepth();
+    }
+};
+
+Game_Event.prototype.updatePathfindingMovement = function(){
+    //check if event is moving with this.isMoving();
+    console.log(this, this.directionList)
+    if(!this.directionList.length > 0) {
+        this.refreshPath();
+    }
+    if(!this.isMoving()){
+        if(!this.isColliding()){
+            if(this.directionList[0]) this.moveTo(this.directionList[0]);
+            this.directionList.shift();
+            return;
+        }
+        else {
+            this.refreshPath();
+        }
+    }
+}
+
+Game_Character.prototype.refreshPath = function(){
+    this.pathfinder.restart();
+    this.setDirectionList();
+}
+
+Game_CharacterBase.prototype.isCollidedWithCharacters = function(x, y) {
+    return this.isCollidedWithEvents(x, y) || this.isCollidedWithVehicles(x, y);
+};
+
+Game_Event.prototype.isColliding = function(){
+    if(this.directionList[0] == 2) return this.isCollidedWithCharacters(this._x, this._y + 1);
+    if(this.directionList[0] == 8) return this.isCollidedWithCharacters(this._x, this._y - 1);
+    if(this.directionList[0] == 4) return this.isCollidedWithCharacters(this._x - 1, this._y);
+    if(this.directionList[0] == 6) return this.isCollidedWithCharacters(this._x + 1, this._y);
+    return false;
+}
+
+Game_Event.prototype.moveTo = function(direction){
+    switch(direction){
+        //down 
+        case 2:
+            return this.moveStraight(direction);
+        //up 
+        case 8:
+            return this.moveStraight(direction);
+        //left 
+        case 4:
+            return this.moveStraight(direction);
+        //right 
+        case 6:
+            return this.moveStraight(direction);
+    }
+}
+
 Game_Event.prototype.coordsToMovementRoute = function(coords){
     if(!coords || coords.length == 0) return
     let directionList = [this.getDirectionCode(this._x, this._y, coords[0][0], coords[0][1])];
@@ -412,32 +461,32 @@ Game_Event.prototype.coordsToMovementRoute = function(coords){
         if(i === arr.length - 1) return;
         directionList.push(this.getDirectionCode(el[0], el[1], arr[i + 1][0], arr[i + 1][1]));
     });
-    console.log(directionList);
+    return directionList;
 }
 
-//TODO Place in the Pathfinder.prototype
 Game_Event.prototype.getDirectionCode = function(x1, y1, x2, y2){
     if(x1 == x2){
         if(y1 > y2){
             // up
-            return 3
+            return 8
         }
         if(y1 < y2){
-            return 1
+            //down
+            return 2
         }
     }
     if(y1 == y2){
         if(x1 > x2){
-            // up
-            return 2
+            // right
+            return 4
         }
         if(x1 < x2){
-            return 4
+            // left
+            return 6
         }
     }
 }
 
-//TODO Place in the Pathfinder.prototype
 Game_Event.prototype.checkValidMove = function(){
     if(this.Directions.get(this._direction) === 'up') return
     if(this.Directions.get(this._direction) === 'right') return

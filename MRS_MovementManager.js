@@ -121,6 +121,13 @@ Game_Event.prototype.IsPlayerInRange = function(range){
     return this.DistanceToPlayer() - range <= 0;
 }
 
+Game_Map.prototype.partyMemberXy = function(x, y){
+    const followers = $gamePlayer._followers._data;
+    return followers.filter(function(member){
+        if(member.pos(x, y) != $gamePlayer.pos(x, y)) return member.pos(x, y);
+    })
+}
+
 
 
 
