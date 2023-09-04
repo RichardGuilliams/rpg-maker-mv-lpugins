@@ -27,6 +27,20 @@ Mythic.Param = Mythic.Param || {};
 */
 //=============================================================================
 
+var clear = () => console.clear();
+
+//=============================================================================
+// Plugin Commands Alias
+//=============================================================================
+var Mythic_PluginCommand = Game_Interpreter.prototype.pluginCommand;
+Game_Interpreter.prototype.pluginCommand = function(command, args) {
+    if (Mythic.Command[command]) {
+        Mythic.Command[command](args);
+        return;
+    };
+    Mythic_PluginCommand.call(this, command, args);
+};
+
 //=============================================================================
 // Plugin Command Processing
 //=============================================================================
@@ -148,111 +162,6 @@ Mythic.Core.GetDataArray = function(dataArrayType){
     return Mythic.Core.DataArrays.get(dataArrayType);
 }
 
-//=============================================================================
-// Key Code
-//=============================================================================
-
-Mythic.Core.Keys = new Map([
-    ["backspace", 8],
-    ["tab", 9],
-    ["enter", 13],
-    ["shift", 16],
-    ["ctrl", 17],
-    ["alt", 18],
-    ["pause", 19],
-    ["caps lock", 20],
-    ["escape", 27],
-    ["space", 32],
-    ["page up", 33],
-    ["page down", 34],
-    ["end", 35],
-    ["home", 36],
-    ["left arrow", 37],
-    ["up arrow", 38],
-    ["right arrow", 39],
-    ["down arrow", 40],
-    ["insert", 45],
-    ["delete", 46],
-    ["0", 48],
-    ["1", 49],
-    ["2", 50],
-    ["3", 51],
-    ["4", 52],
-    ["5", 53],
-    ["6", 54],
-    ["7", 55],
-    ["8", 56],
-    ["9", 57],
-    ["a", 65],
-    ["b", 66],
-    ["c", 67],
-    ["d", 68],
-    ["e", 69],
-    ["f", 70],
-    ["g", 71],
-    ["h", 72],
-    ["i", 73],
-    ["j", 74],
-    ["k", 75],
-    ["l", 76],
-    ["m", 77],
-    ["n", 78],
-    ["o", 79],
-    ["p", 80],
-    ["q", 81],
-    ["r", 82],
-    ["s", 83],
-    ["t", 84],
-    ["u", 85],
-    ["v", 86],
-    ["w", 87],
-    ["x", 88],
-    ["y", 89],
-    ["z", 90],
-    ["left window key", 91],
-    ["right window key", 92],
-    ["select key", 93],
-    ["numpad 0", 96],
-    ["numpad 1", 97],
-    ["numpad 2", 98],
-    ["numpad 3", 99],
-    ["numpad 4", 100],
-    ["numpad 5", 101],
-    ["numpad 6", 102],
-    ["numpad 7", 103],
-    ["numpad 8", 104],
-    ["numpad 9", 105],
-    ["multiply", 106],
-    ["add", 107],
-    ["subtract", 109],
-    ["decimal point", 110],
-    ["divide", 111],
-    ["f1", 112],
-    ["f2", 113],
-    ["f3", 114],
-    ["f4", 115],
-    ["f5", 116],
-    ["f6", 117],
-    ["f7", 118],
-    ["f8", 119],
-    ["f9", 120],
-    ["f10", 121],
-    ["f11", 122],
-    ["f12", 123],
-    ["num lock", 144],
-    ["scroll lock", 145],
-    [";", 186],
-    ["=", 187],
-    [",", 188],
-    ["-", 189],
-    [".", 190],
-    ["/", 191],
-    ["`", 192],
-    ["[", 219],
-    ["\\", 220],
-    ["]", 221],
-    ["'", 222]
-]);
 
 //=============================================================================
 // Game_CharacterBase
@@ -732,6 +641,10 @@ Mythic.Utils.DistanceBetweenCoords = function(coords1, coords2){
 // Value Processing
 //=============================================================================
 
+Mythic.Utils.isObjectEmpty = function(object){
+    return object.keys(object).length > 0;
+}
+
 Mythic.Utils.isNumber = function(value){
     return typeof value === "number";
 }
@@ -763,3 +676,130 @@ Mythic.Utils.isFunction = function(value){
 Mythic.Utils.isObject = function(value){
     return typeof value === "object";
 }
+
+Mythic.Utils.isObjectEmpty = function(object){
+    return Object.keys(object).length == 0;
+}
+
+Mythic.Utils.isArrayEmpty = function(array){
+    return array.length == 0;
+}
+
+Mythic.Utils.isNumberEven = function(number){
+    return number % 2 === 0;
+}
+
+Mythic.Utils.divisibleBy = function(number, divisor){
+    return number % divisor === 0;
+}
+//=============================================================================
+// Input
+//=============================================================================
+
+Mythic.Input = Mythic.Input || {};
+
+Mythic.Input.Keys = new Map([
+    ["backspace", 8],
+    ["tab", 9],
+    ["enter", 13],
+    ["shift", 16],
+    ["ctrl", 17],
+    ["alt", 18],
+    ["pause", 19],
+    ["caps lock", 20],
+    ["escape", 27],
+    ["space", 32],
+    ["page up", 33],
+    ["page down", 34],
+    ["end", 35],
+    ["home", 36],
+    ["left arrow", 37],
+    ["up arrow", 38],
+    ["right arrow", 39],
+    ["down arrow", 40],
+    ["insert", 45],
+    ["delete", 46],
+    ["0", 48],
+    ["1", 49],
+    ["2", 50],
+    ["3", 51],
+    ["4", 52],
+    ["5", 53],
+    ["6", 54],
+    ["7", 55],
+    ["8", 56],
+    ["9", 57],
+    ["a", 65],
+    ["b", 66],
+    ["c", 67],
+    ["d", 68],
+    ["e", 69],
+    ["f", 70],
+    ["g", 71],
+    ["h", 72],
+    ["i", 73],
+    ["j", 74],
+    ["k", 75],
+    ["l", 76],
+    ["m", 77],
+    ["n", 78],
+    ["o", 79],
+    ["p", 80],
+    ["q", 81],
+    ["r", 82],
+    ["s", 83],
+    ["t", 84],
+    ["u", 85],
+    ["v", 86],
+    ["w", 87],
+    ["x", 88],
+    ["y", 89],
+    ["z", 90],
+    ["left window key", 91],
+    ["right window key", 92],
+    ["select key", 93],
+    ["numpad 0", 96],
+    ["numpad 1", 97],
+    ["numpad 2", 98],
+    ["numpad 3", 99],
+    ["numpad 4", 100],
+    ["numpad 5", 101],
+    ["numpad 6", 102],
+    ["numpad 7", 103],
+    ["numpad 8", 104],
+    ["numpad 9", 105],
+    ["multiply", 106],
+    ["add", 107],
+    ["subtract", 109],
+    ["decimal point", 110],
+    ["divide", 111],
+    ["f1", 112],
+    ["f2", 113],
+    ["f3", 114],
+    ["f4", 115],
+    ["f5", 116],
+    ["f6", 117],
+    ["f7", 118],
+    ["f8", 119],
+    ["f9", 120],
+    ["f10", 121],
+    ["f11", 122],
+    ["f12", 123],
+    ["num lock", 144],
+    ["scroll lock", 145],
+    [";", 186],
+    ["=", 187],
+    [",", 188],
+    ["-", 189],
+    [".", 190],
+    ["/", 191],
+    ["`", 192],
+    ["[", 219],
+    ["\\", 220],
+    ["]", 221],
+    ["'", 222]
+]);
+
+//=================================================================
+// Data Type Additions
+//=================================================================

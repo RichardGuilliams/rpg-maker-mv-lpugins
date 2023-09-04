@@ -31,46 +31,51 @@ Mythic.Utils = Mythic.Utils || {};
 //=============================================================================
 
 //=============================================================================
-// Path Node
+// Plugin Command Processing
+//=============================================================================
 
+Mythic.Command.Pathfinder = function(arguments){
+    target = {};
+    if(arguments[0] === 'Player') target = $gamePlayer;
+    GetCurrentEvent().createPathfinder();
+    GetCurrentEvent().pathfinder.setTarget(target);
+};
+
+//=============================================================================
+// Path Node
 //=============================================================================
 function PathNode(){
     this.initialize.apply(this, arguments);
 }
 
-PathNode.prototype.constructor = PathNode;
-
 PathNode.prototype.initialize = function(x, y){
     this.parentNodeIndex = 0;
     this.parentNode = {};
     this.currentDistance = 0;
-    this.baseNode = false;
+    // this.baseNode = false;
     this.pathfinder = {};
     this.passable = false;
     this.x = x;
     this.y = y;
     this.leftNode = {};
     this.leftDistance = 0;
-    this.leftPassable = false;
     this.leftActive = false;
     this.leftFailed = false;
+    this.nodeOccupied = false;
     this.rightNode = {};
     this.rightDistance = 0;
-    this.rightPassable = false;
     this.topNode = {};
     this.topDistance = 0;
-    this.topPassable = false;
     this.bottomNode = {};
     this.bottomDistance = 0;
-    this.bottomPassable = false;
     this.distances = [];
-    this.openList = [];
-    this.closedList = [];
-    this.coordsList = [];
+    // this.openList = [];
+    // this.closedList = [];
+    // this.coordsList = [];
 };
 
 PathNode.prototype.CurrentDistance = function(){
-    return Mythic.Utils.DistanceBetweenCoords([this.x, this.y], [this.parent.targetX, this.parent.targetY]);
+    return Mythic.Utils.DistanceBetweenCoords([this.x, this.y], [this.parent.target._x, this.parent.target._y]);
 };
 
 PathNode.prototype.getSiblingNodesSorted = function(){
@@ -80,97 +85,94 @@ PathNode.prototype.getSiblingNodesSorted = function(){
 
 PathNode.prototype.setLeftDistance = function(){
     if(this.leftNode){
-        this.leftDistance = Mythic.Utils.DistanceBetweenCoords([this.leftNode.x, this.leftNode.y], [this.parent.targetX, this.parent.targetY]);
+        this.leftDistance = Mythic.Utils.DistanceBetweenCoords([this.leftNode.x, this.leftNode.y], [this.parent.target._x, this.parent.target._y]);
     }
 }
 
 PathNode.prototype.setRightDistance = function(){
     if(this.rightNode){
-        this.rightDistance = Mythic.Utils.DistanceBetweenCoords([this.rightNode.x, this.rightNode.y], [this.parent.targetX, this.parent.targetY]);
+        this.rightDistance = Mythic.Utils.DistanceBetweenCoords([this.rightNode.x, this.rightNode.y], [this.parent.target._x, this.parent.target._y]);
     }
 }
 
 PathNode.prototype.setTopDistance = function(){
     if(this.topNode){
-        this.topDistance = Mythic.Utils.DistanceBetweenCoords([this.topNode.x, this.topNode.y], [this.parent.targetX, this.parent.targetY]);
+        this.topDistance = Mythic.Utils.DistanceBetweenCoords([this.topNode.x, this.topNode.y], [this.parent.target._x, this.parent.target._y]);
     }
 }
 
 PathNode.prototype.setBottomDistance = function(){
     if(this.bottomNode){
-        this.bottomDistance = Mythic.Utils.DistanceBetweenCoords([this.bottomNode.x, this.bottomNode.y], [this.parent.targetX, this.parent.targetY]);
+        this.bottomDistance = Mythic.Utils.DistanceBetweenCoords([this.bottomNode.x, this.bottomNode.y], [this.parent.target._x, this.parent.target._y]);
     }
 }
 
-PathNode.prototype.startSearch = function(){
-    this.parent.startingNode = this;
-    this.baseNode = true;
-    this.openList.push(this);
-    this.generateSearchList();
-};
 
-PathNode.prototype.targetNode = function(){
-    return this.parent.nodes.find(node => node.x === this.parent.targetX && node.y === this.parent.targetY);
-}
+// PathNode.prototype.startSearch = function(){
+//     this.parent.startingNode = this;
+//     this.baseNode = true;
+//     this.openList.push(this);
+//     this.generateSearchList();
+// };
 
-PathNode.prototype.removeFromOpenList = function(node) {
-    const index = this.parent.startingNode.openList.indexOf(node);
-    if (index !== -1) {
-        this.parent.startingNode.openList.splice(index, 1);
-        this.parent.startingNode.closedList.push(node);
-    }
-};
+// PathNode.prototype.targetNode = function(){
+//     return this.parent.nodes.find(node => node.x === this.parent.targetX && node.y === this.parent.targetY);
+// }
 
+// PathNode.prototype.removeFromOpenList = function(node) {
+//     const index = this.parent.startingNode.openList.indexOf(node);
+//     if (index !== -1) {
+//         this.parent.startingNode.openList.splice(index, 1);
+//         this.parent.startingNode.closedList.push(node);
+//     }
+// };
 
-//TODO Incorporate while loop here to ensure that the entire search takes place in a single run.
-PathNode.prototype.generateSearchList = function(){
-    const closedList = this.parent.startingNode.closedList;
-    const openList = this.parent.startingNode.openList;
-    if(openList.length > 0 && closedList.indexOf(this.parent.startingNode.targetNode() == -1) && openList[0].constructor == PathNode){
-        openList[0].getSiblingNodesSorted().forEach(node => {
-            if (node && node.constructor == PathNode && closedList.indexOf(node) == -1 && openList.indexOf(node) == -1) {
-                node.parentNode = this;
-                node.parentNodeIndex = closedList.length;
-                openList.push(node);
-            }
-        });
-    }
-    this.removeFromOpenList(openList[0]);
-    if(closedList.indexOf(this.parent.startingNode.targetNode()) > -1) {
-        this.findNodeChain();
-        this.baseNode = false;
-    }
-};
+// PathNode.prototype.generateSearchList = function(){
+    //     const closedList = this.parent.startingNode.closedList;
+//     const openList = this.parent.startingNode.openList;
+//     if(openList.length > 0 && closedList.indexOf(this.parent.startingNode.targetNode == -1) && openList[0].constructor == PathNode){
+//         openList[0].getSiblingNodesSorted().forEach(node => {
+    //             if (node && node.constructor == PathNode && closedList.indexOf(node) == -1 && openList.indexOf(node) == -1) {
+//                 node.parentNode = this;
+//                 node.parentNodeIndex = closedList.length;
+//                 openList.push(node);
+//             }
+//         });
+//     }
+//     this.removeFromOpenList(openList[0]);
+//     if(closedList.indexOf(this.parent.startingNode.targetNode > -1) {
+//         this.generateCoordsList();
+//         this.baseNode = false;
+//     }
+// };
 
-PathNode.prototype.findNodeChain = function(){
-    const startingNode = this.parent.startingNode;
-    const closedList = startingNode.closedList;
-    const index = closedList.indexOf(startingNode.targetNode()); 
-    var coordsList = [];
-    closedList[index].createCoordList(coordsList);
-    this.coordsList = coordsList.reverse();;
-    console.log(this.coordsList);
-}
+// PathNode.prototype.generateCoordsList = function(){
+//     const startingNode = this.parent.startingNode;
+//     const closedList = startingNode.closedList;
+//     const index = closedList.indexOf(startingNode.targetNode; 
+//     var coordsList = [];
+//     closedList[index].createCoordList(coordsList);
+//     this.coordsList = coordsList.reverse();;
+//     console.log(this.coordsList);
+// }
 
-//TODO Remove 1st element of coordsList before entering while loop. it represents the tile the event occupies.
-
-PathNode.prototype.createCoordList = function(coordsList) {
-    const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
+// PathNode.prototype.createCoordList = function(coordsList) {
+    //     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
     
-    while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
-        coordsList.push([this.x, this.y]);
-        visitedNodes.add(this);
-        this = this.closedList[this.parentNodeIndex];
-    }
-};
+//     while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
+//         coordsList.push([this.x, this.y]);
+//         visitedNodes.add(this);
+//         currentNode = this.closedList[this.parentNodeIndex];
+//     }
+// };
 
 PathNode.prototype.reset = function(){
     this.parentNode = {};
     this.parentNodeIndex = 0;
-    this.baseNode = false;
-    this.openList = [];
-    this.closedList = [];
-    this.coordsList = [];
+    // this.baseNode = false;
+    // this.openList = [];
+    // this.closedList = [];
+    // this.coordsList = [];
 };
 
 PathNode.prototype.update = function(){
@@ -191,31 +193,46 @@ function Pathfinder(){
     this.initialize.apply(this, arguments);
 }
 
-Pathfinder.prototype.constructor = Pathfinder;
-
 Pathfinder.prototype.initialize = function(){
+    this.event = GetCurrentEvent();
     this.startingNode = {};
     this.searchStarted = false;
-    this.parent = {};
-    this.x = 0;
-    this.y = 0;
-    this.targetX = 0;
-    this.targetY = 0;
+    this.targetAcquired = false;
+    this.target = {};
+    this.target.x = 0;
+    this.target.y = 0;
     this.distanceToTarget = 0;
-    this.mapWidth = 0;
-    this.mapHeight = 0;
+    this.mapWidth = $gameMap.width();;
+    this.mapHeight = $gameMap.height();;
     this.nodes = [];
     this.nodeBranches = [];
+    this.openList = [];
+    this.closedList = [];
+    this.coordList = [];
     this.setup();
 }
 
 Pathfinder.prototype.setup = function(){
-    this.mapWidth = $gameMap.width();
-    this.mapHeight = $gameMap.height();
-    
+    this.parent = GetCurrentEvent();    
     this.createNodes();
     this.setupNodes();
 }
+
+//================================================================
+// Pathfinder Target Setup
+//================================================================
+
+Pathfinder.prototype.setTarget = function(target){
+    this.target = target;
+    if(this.target) this.targetAcquired = true;
+}
+
+Pathfinder.prototype.distanceToTarget = function(){
+}
+
+//================================================================
+// Pathfinder Node Setup
+//================================================================
 
 Pathfinder.prototype.setupNodes = function(){
     this.nodes.map((node) => {
@@ -223,10 +240,14 @@ Pathfinder.prototype.setupNodes = function(){
     });
 }
 
+Pathfinder.prototype.setTargetNode = function(){
+    this.targetNode = this.nodes.find(node => node.x === this.target.x && node.y === this.target.y);
+}
+
 Pathfinder.prototype.setupConnectedNodes = function(node){
-    if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.LEFT)) node.leftNode = this.nodes.find((el) => el.x === node.x - 1 && el.y === node.y);
+    if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.LEFT))    node.leftNode = this.nodes.find((el) => el.x === node.x - 1 && el.y === node.y);
     if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.RIGHT))   node.rightNode = this.nodes.find((el) => el.x === node.x + 1 && el.y === node.y);
-    if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.UP))     node.topNode = this.nodes.find((el) => el.x === node.x && el.y === node.y - 1);
+    if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.UP))      node.topNode = this.nodes.find((el) => el.x === node.x && el.y === node.y - 1);
     if($gameMap.isPassable(node.x, node.y, Game_Map.prototype.DOWN))    node.bottomNode = this.nodes.find((el) => el.x === node.x && el.y === node.y + 1);
 }
 
@@ -241,33 +262,101 @@ Pathfinder.prototype.createNodes = function(){
         }
     }
 }
-    
-Pathfinder.prototype.shortestPathToTarget = function(){
-    this.setStartingNode();
-    this.startingNode.startSearch();
+PathNode.prototype.generateCoordsList = function(){ 
+    var coordsList = [];
+    this.createCoordList();
+    this.coordsList = coordsList.reverse();
+    console.log(this.coordsList);
 }
 
 Pathfinder.prototype.setStartingNode = function(){
-    this.startingNode = this.nodes.find(node => node.x == this.parent._x && node.y == this.parent._y);
+    this.startingNode = this.nodes.find(node => node.x == this.event._x && node.y == this.event._y);
 }
+
+Pathfinder.prototype.resetNodes = function(){
+    this.nodes.forEach( node => node.reset());
+};
+
+//================================================================
+// Pathfinder Coords List
+//================================================================
+
+Pathfinder.prototype.createCoordList = function() {
+    const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
+    
+    while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
+        this.coordsList.push([this.x, this.y]);
+        visitedNodes.add(this);
+        currentNode = this.closedList[this.parentNodeIndex];
+    }
+};
+
+Pathfinder.prototype.removeFromOpenList = function(node) {
+    const index = this.openList.indexOf(node);
+    if (index !== -1) {
+        this.openList.splice(index, 1);
+        this.closedList.push(node);
+    }
+};
+
+Pathfinder.prototype.startSearch = function(){
+    this.openList.push(this.startingNode);
+    this.generateSearchList();
+};
+
+Pathfinder.prototype.targetFound = function() {
+    return this.closedList.indexOf(this.targetNode);
+}
+
+
+
+//TODO Incorporate while loop here to ensure that the entire search takes place in a single run.
+Pathfinder.prototype.generateSearchList = function(){
+    debugger;
+    while(this.openList.length > 0){
+
+    }
+    // Removed  && this.openList[0].constructor == PathNode from the if statement below
+    if(this.openList.length > 0 && this.closedList.indexOf(this.targetNode) == -1){
+        this.openList[0].getSiblingNodesSorted().forEach(node => {
+            if (node && node.constructor == PathNode && this.closedList.indexOf(node) == -1 && this.openList.indexOf(node) == -1) {
+                node.parentNode = this.startingNode;
+                node.parentNodeIndex = this.closedList.length;
+                this.openList.push(node);
+            }
+        });
+    }
+    this.removeFromOpenList(this.openList[0]);
+    if(this.closedList.indexOf(this.targetNode) > -1) {
+        this.generateCoordsList();
+        this.baseNode = false;
+    }
+};
+    
+Pathfinder.prototype.shortestPathToTarget = function(){
+    this.setStartingNode();
+    this.startSearch();
+}
+
 
 Pathfinder.prototype.restart = function(){
     this.startingNode = {};
-    this.targetX = $gamePlayer._x;
-    this.targetY = $gamePlayer._y;
-    this.x = this.parent._x;
-    this.y = this.parent._y;
+    this.targetX =      $gamePlayer._x;
+    this.targetY =      $gamePlayer._y;
+    this.x =            this.parent._x;
+    this.y =            this.parent._y;
     this.setStartingNode();
-    this.nodes.forEach( node => node.reset());
+    this.resetNodes();
     this.shortestPathToTarget();
 };
+
 
 Pathfinder.prototype.update = function(){
     if(this.nodes.length ==0) return this.restart();
     this.nodes.forEach( node => {
         node.update();
     })
-    if(!this.searchStarted) {
+    if(!this.searchStarted && this.targetAcquired) {
         this.searchStarted = true;
         this.shortestPathToTarget();
     }
@@ -285,8 +374,71 @@ Game_Event.prototype.createPathfinder = function(){
     this.pathfinder.parent = this;
 };
 
+
+
 Mythic.Pathfinder.GameEventUpdate = Game_Event.prototype.update;
 Game_Event.prototype.update = function(){
     Mythic.Pathfinder.GameEventUpdate.call(this, arguments);
     if(this.pathfinder) this.pathfinder.update();
+}
+
+Mythic.Pathfinder.GameEventMoveTowardPlayer = Game_Event.prototype.moveTypeTowardPlayer;
+Game_Event.prototype.moveTypeTowardPlayer = function() {
+    Mythic.Pathfinder.GameEventMoveTowardPlayer.call(this);
+    this.moveOnPath();
+};
+
+Game_Event.prototype.moveOnPath = function(){
+    // this.pathfinder.shortestPathToTarget();
+    const coords = this.pathfinder.coordsList
+    if(!coords) return;
+    var direction = this.coordsToMovementRoute(coords);
+    if(coords.length != 0 && this._x === coords[0][0] && this._y === coords[0][1]){
+        this.pathfinder.startingNode.coordsList = this.pathfinder.startingNode.coordsList.unshift();
+    }
+    this._moveRoute.list = [
+        {code: direction, indent: 0}
+    ]
+    
+}
+
+//TODO Place in the Pathfinder.prototype
+Game_Event.prototype.coordsToMovementRoute = function(coords){
+    if(!coords || coords.length == 0) return
+    let directionList = [this.getDirectionCode(this._x, this._y, coords[0][0], coords[0][1])];
+    coords.forEach((el, i, arr) => {
+        if(i === arr.length - 1) return;
+        directionList.push(this.getDirectionCode(el[0], el[1], arr[i + 1][0], arr[i + 1][1]));
+    });
+    console.log(directionList);
+}
+
+//TODO Place in the Pathfinder.prototype
+Game_Event.prototype.getDirectionCode = function(x1, y1, x2, y2){
+    if(x1 == x2){
+        if(y1 > y2){
+            // up
+            return 3
+        }
+        if(y1 < y2){
+            return 1
+        }
+    }
+    if(y1 == y2){
+        if(x1 > x2){
+            // up
+            return 2
+        }
+        if(x1 < x2){
+            return 4
+        }
+    }
+}
+
+//TODO Place in the Pathfinder.prototype
+Game_Event.prototype.checkValidMove = function(){
+    if(this.Directions.get(this._direction) === 'up') return
+    if(this.Directions.get(this._direction) === 'right') return
+    if(this.Directions.get(this._direction) === 'down') return
+    if(this.Directions.get(this._direction) === 'left') return
 }

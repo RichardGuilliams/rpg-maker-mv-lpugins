@@ -17,7 +17,7 @@ Mythic.Param = Mythic.Param || {};
 Mythic.Utils = Mythic.Utils || {};
 //=============================================================================
 /*: 
-* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functianality for easier development..
+* @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functionality for easier development..
 * @author Richard Guilliams
 *
 * @help 
@@ -29,18 +29,6 @@ Mythic.Utils = Mythic.Utils || {};
 * - Finished plugin!
 */
 //=============================================================================
-
-//=============================================================================
-// Plugin Commands Alias
-//=============================================================================
-var Mythic_PluginCommand = Game_Interpreter.prototype.pluginCommand;
-Game_Interpreter.prototype.pluginCommand = function(command, args) {
-    if (Mythic.Command[command]) {
-        Mythic.Command[command](args);
-        return;
-    };
-    Mythic_PluginCommand.call(this, command, args);
-};
 
 //=============================================================================
 // Commands
@@ -77,26 +65,6 @@ Game_Event.prototype.updateChase = function() {
     if(this.hasOwnProperty('moveParams') && !this.IsPlayerInRange(this.moveParams.quitDistance) && this.moveParams.chaseStarted) this.EndChase();
 };
 
-Mythic.MM.GameEventMoveTowardPlayer = Game_Event.prototype.moveTypeTowardPlayer;
-Game_Event.prototype.moveTypeTowardPlayer = function() {
-    Mythic.MM.GameEventMoveTowardPlayer.call(this);
-    this.moveOnPath();
-};
-
-Game_Event.prototype.moveOnPath = function(){
-    // this.pathfinder.shortestPathToTarget();
-    const coords = this.pathfinder.startingNode.coordsList
-    if(!coords) return;
-    var direction = this.coordsToMovementRoute(coords);
-    if(coords.length != 0 && this._x === coords[0][0] && this._y === coords[0][1]){
-        this.pathfinder.startingNode.coordsList = this.pathfinder.startingNode.coordsList.unshift();
-    }
-    this._moveRoute.list = [
-        {code: direction, indent: 0}
-    ]
-    
-}
-
 Game_Character.prototype.updateRoutineMove = function() {
     if (this._waitCount > 0) {
         this._waitCount--;
@@ -109,48 +77,6 @@ Game_Character.prototype.updateRoutineMove = function() {
         }
     }
 };
-
-//TODO Place in the Pathfinder.prototype
-Game_Event.prototype.coordsToMovementRoute = function(coords){
-    debugger;
-    if(!coords || coords.length == 0) return
-    let directionList = [this.getDirectionCode(this._x, this._y, coords[0][0], coords[0][1])];
-    coords.forEach((el, i, arr) => {
-        if(i === arr.length - 1) return;
-        directionList.push(this.getDirectionCode(el[0], el[1], arr[i + 1][0], arr[i + 1][1]));
-    });
-    console.log(directionList);
-}
-
-//TODO Place in the Pathfinder.prototype
-Game_Event.prototype.getDirectionCode = function(x1, y1, x2, y2){
-    if(x1 == x2){
-        if(y1 > y2){
-            // up
-            return 3
-        }
-        if(y1 < y2){
-            return 1
-        }
-    }
-    if(y1 == y2){
-        if(x1 > x2){
-            // up
-            return 2
-        }
-        if(x1 < x2){
-            return 4
-        }
-    }
-}
-
-//TODO Place in the Pathfinder.prototype
-Game_Event.prototype.checkValidMove = function(){
-    if(this.Directions.get(this._direction) === 'up') return
-    if(this.Directions.get(this._direction) === 'right') return
-    if(this.Directions.get(this._direction) === 'down') return
-    if(this.Directions.get(this._direction) === 'left') return
-}
 
 Game_Event.prototype.canPass = function(x, y, d) {
     var x2 = $gameMap.roundXWithDirection(x, d);
