@@ -71,7 +71,7 @@ PathNode.prototype.initialize = function(x, y){
     this.distances = [];
     // this.openList = [];
     // this.closedList = [];
-    // this.coordsList = [];
+    // this.coordList = [];
 };
 
 PathNode.prototype.CurrentDistance = function(){
@@ -141,26 +141,26 @@ PathNode.prototype.setBottomDistance = function(){
 //     }
 //     this.removeFromOpenList(openList[0]);
 //     if(closedList.indexOf(this.parent.startingNode.targetNode > -1) {
-//         this.generateCoordsList();
+//         this.generateCoordList();
 //         this.baseNode = false;
 //     }
 // };
 
-// PathNode.prototype.generateCoordsList = function(){
+// PathNode.prototype.generateCoordList = function(){
 //     const startingNode = this.parent.startingNode;
 //     const closedList = startingNode.closedList;
 //     const index = closedList.indexOf(startingNode.targetNode; 
-//     var coordsList = [];
-//     closedList[index].createCoordList(coordsList);
-//     this.coordsList = coordsList.reverse();;
-//     console.log(this.coordsList);
+//     var coordList = [];
+//     closedList[index].createCoordList(coordList);
+//     this.coordList = coordList.reverse();;
+//     console.log(this.coordList);
 // }
 
-// PathNode.prototype.createCoordList = function(coordsList) {
+// PathNode.prototype.createCoordList = function(coordList) {
     //     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
     
 //     while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
-//         coordsList.push([this.x, this.y]);
+//         coordList.push([this.x, this.y]);
 //         visitedNodes.add(this);
 //         currentNode = this.closedList[this.parentNodeIndex];
 //     }
@@ -172,7 +172,7 @@ PathNode.prototype.reset = function(){
     // this.baseNode = false;
     // this.openList = [];
     // this.closedList = [];
-    // this.coordsList = [];
+    // this.coordList = [];
 };
 
 PathNode.prototype.update = function(){
@@ -201,6 +201,7 @@ Pathfinder.prototype.initialize = function(){
     this.target = {};
     this.target.x = 0;
     this.target.y = 0;
+    this.targetNode = {};
     this.distanceToTarget = 0;
     this.mapWidth = $gameMap.width();;
     this.mapHeight = $gameMap.height();;
@@ -209,6 +210,7 @@ Pathfinder.prototype.initialize = function(){
     this.openList = [];
     this.closedList = [];
     this.coordList = [];
+    this.currentNode = {};
     this.setup();
 }
 
@@ -225,6 +227,7 @@ Pathfinder.prototype.setup = function(){
 Pathfinder.prototype.setTarget = function(target){
     this.target = target;
     if(this.target) this.targetAcquired = true;
+    this.setTargetNode();
 }
 
 Pathfinder.prototype.distanceToTarget = function(){
@@ -241,7 +244,7 @@ Pathfinder.prototype.setupNodes = function(){
 }
 
 Pathfinder.prototype.setTargetNode = function(){
-    this.targetNode = this.nodes.find(node => node.x === this.target.x && node.y === this.target.y);
+    this.targetNode = this.nodes.find(node => node.x === this.target._x && node.y === this.target._y);
 }
 
 Pathfinder.prototype.setupConnectedNodes = function(node){
@@ -256,17 +259,17 @@ Pathfinder.prototype.createNodes = function(){
     for(i = 0; i < this.mapHeight; i++){
         for(j = 0; j < this.mapWidth; j++){
             if($gameMap.isTilePassable(j, i)){
-                this.nodes.push(new PathNode(i, j));
+                this.nodes.push(new PathNode(j, i));
                 this.nodes[this.nodes.length - 1].parent = this;           
             }
         }
     }
 }
-PathNode.prototype.generateCoordsList = function(){ 
-    var coordsList = [];
+PathNode.prototype.generateCoordList = function(){ 
+    var coordList = [];
     this.createCoordList();
-    this.coordsList = coordsList.reverse();
-    console.log(this.coordsList);
+    this.coordList = coordList.reverse();
+    console.log(this.coordList);
 }
 
 Pathfinder.prototype.setStartingNode = function(){
@@ -282,13 +285,16 @@ Pathfinder.prototype.resetNodes = function(){
 //================================================================
 
 Pathfinder.prototype.createCoordList = function() {
+    this.currentNode = this.closedList[this.closedList.length - 1];
     const visitedNodes = new Set(); // Keep track of visited nodes to avoid infinite loops
-    
-    while (this && this.parentNodeIndex > 0 && !visitedNodes.has(this)) {
-        this.coordsList.push([this.x, this.y]);
-        visitedNodes.add(this);
-        currentNode = this.closedList[this.parentNodeIndex];
+
+    while (this.currentNode && this.currentNode.parentNodeIndex >= 0 && !visitedNodes.has(this.currentNode.parentNodeIndex)) {
+        this.coordList.push([this.currentNode.x, this.currentNode.y]);
+        visitedNodes.add(this.currentNode.parentNodeIndex);
+        this.currentNode = this.closedList[this.currentNode.parentNodeIndex];
     }
+
+    this.coordList = this.coordList.reverse();
 };
 
 Pathfinder.prototype.removeFromOpenList = function(node) {
@@ -312,12 +318,7 @@ Pathfinder.prototype.targetFound = function() {
 
 //TODO Incorporate while loop here to ensure that the entire search takes place in a single run.
 Pathfinder.prototype.generateSearchList = function(){
-    debugger;
-    while(this.openList.length > 0){
-
-    }
-    // Removed  && this.openList[0].constructor == PathNode from the if statement below
-    if(this.openList.length > 0 && this.closedList.indexOf(this.targetNode) == -1){
+    while(this.closedList.indexOf(this.targetNode) == -1 && this.openList.length > 0){
         this.openList[0].getSiblingNodesSorted().forEach(node => {
             if (node && node.constructor == PathNode && this.closedList.indexOf(node) == -1 && this.openList.indexOf(node) == -1) {
                 node.parentNode = this.startingNode;
@@ -325,10 +326,11 @@ Pathfinder.prototype.generateSearchList = function(){
                 this.openList.push(node);
             }
         });
+        this.removeFromOpenList(this.openList[0]);
+
     }
-    this.removeFromOpenList(this.openList[0]);
     if(this.closedList.indexOf(this.targetNode) > -1) {
-        this.generateCoordsList();
+        this.createCoordList();
         this.baseNode = false;
     }
 };
@@ -390,11 +392,11 @@ Game_Event.prototype.moveTypeTowardPlayer = function() {
 
 Game_Event.prototype.moveOnPath = function(){
     // this.pathfinder.shortestPathToTarget();
-    const coords = this.pathfinder.coordsList
+    const coords = this.pathfinder.coordList
     if(!coords) return;
     var direction = this.coordsToMovementRoute(coords);
     if(coords.length != 0 && this._x === coords[0][0] && this._y === coords[0][1]){
-        this.pathfinder.startingNode.coordsList = this.pathfinder.startingNode.coordsList.unshift();
+        this.pathfinder.startingNode.coordList = this.pathfinder.startingNode.coordList.unshift();
     }
     this._moveRoute.list = [
         {code: direction, indent: 0}

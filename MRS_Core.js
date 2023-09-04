@@ -460,7 +460,7 @@ Mythic.Core.GetTraitValue = function(id, index){
 Game_Map.prototype.LEFT = 4;
 Game_Map.prototype.RIGHT = 6;
 Game_Map.prototype.UP = 8;
-Game_Map.prototype.DOWN = 6;
+Game_Map.prototype.DOWN = 2;
 
 Game_Map.prototype.playerTiles = function() {
     let t1 = $gameMap.tileId($gamePlayer.x, $gamePlayer.x, 0);
