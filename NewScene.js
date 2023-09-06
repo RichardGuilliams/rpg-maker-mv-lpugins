@@ -46,7 +46,7 @@ allows less hardcoding and allows a more dynamic approach.
 //=============================================================================
 
 // Input - creating a custom input trigger for the game
-Input.keyMapper[Mythic.Input.Keys.get('p')] = "customMenu"
+Input.keyMapper[Mythic.Input.Keys.get('p')] = "Menu"
 
 // Aliasing the update function of the Scene_Map.prototype to properly override its functionality.
 Scene_New.aliasSceneMapUpdate = Scene_Map.prototype.update;
@@ -54,7 +54,7 @@ Scene_Map.prototype.update = function() {
     //calling the aliased update function before running the additional code.
     Scene_New.aliasSceneMapUpdate.call(this);
     // Checking if input is triggered and pushing the custom scene to the stack.
-    if(Input.isTriggered('customMenu')) SceneManager.push(Scene_New); 
+    if(Input.isTriggered('Menu')) SceneManager.push(Scene_New); 
 };
 
 // Scene Character Select Menu
@@ -88,17 +88,18 @@ Scene_New.prototype.create = function(){
 
 //This is a command window so we must create commands for all window inputs here.
 Scene_New.prototype.createNewSelectableWindow = function(){
-    this._newSelectableWindow = new Window_NewSelectable(this, 0, 0, Window_NewSelectable.prototype.WIDTH, Window_NewSelectable.prototype.MAX_PAGE_ROWS + (this._padding * 2));
+    this._newSelectableWindow = new Window_NewSelectable(this, 0, 0, Window_NewSelectable.prototype.WIDTH, (5 * 34) + (this._padding * 2));
     this._newSelectableWindow.show();
     this._newSelectableWindow.select(0);
     this._newSelectableWindow.activate();
     this._newSelectableWindow.setHandler('ok', this.commandOk.bind(this));
     this._newSelectableWindow.setHandler('cancel', this.commandCancel.bind(this));
-    // ImageManager.reserveFace('Actor2');
+    ImageManager.reserveFace('Actor2');
     this.addWindow(this._newSelectableWindow);
 }
 
 Scene_New.prototype.commandCancel = function(){
+    debugger;
     if(this._newSelectableWindow.visible) {
         this._newSelectableWindow.hide();
         this._newSelectableWindow.deactivate();
@@ -130,21 +131,53 @@ function Window_NewSelectable(){
 Window_NewSelectable.prototype = Object.create(Window_Selectable.prototype);
 Window_NewSelectable.prototype.constructor = Window_NewSelectable;
 
-Window_NewSelectable.prototype.WIDTH = 300;
-Window_NewSelectable.prototype.MAX_PAGE_ROWS = 4;
-
+Window_NewSelectable.prototype.WIDTH = 200;
 
 Window_NewSelectable.prototype.initialize = function(parent, x, y, width, height){
     Window_Selectable.prototype.initialize.call(this, x, y, width, height);
-    this.changeFontSize(18);
+    this.changeFontSize(16);
     this.setParams(parent);
     this.refresh();
-    this.hide();
+    // this.hide();
 }
 
 Window_NewSelectable.prototype.setParams = function(parent){
+    this._index = 0;
     this._parent = parent;
+    this.setData();
 }
+
+Window_NewSelectable.prototype.setData = function(){
+    this._data = $dataEnemies;
+    this._data.shift();
+    this._maxRows = this._data.length - 1;
+};
+
+Window_NewSelectable.prototype.refresh = function(){
+    this.contents.clear();
+    this.drawAllItems();
+}
+
+Window_NewSelectable.prototype.drawAllItems = function() {
+    var data = this._data.slice(this._index, this._index + 4);
+    if(data.length < 4) data = this._data.slice(this._data.length - 4, this._data.length);
+    data.forEach((el, i) => {
+        var rect = this.itemRect(i);
+        console.log(rect)
+        rect.width -= this.textPadding();
+        rect.height -= 20;
+        this.drawText(el.name, 0, 36 * i, 200 - (this.padding * 2), 'center');
+    })
+};
+
+Window_NewSelectable.prototype.maxRows = function() {
+    return $dataEnemies.length - 3;
+};
+
+Window_NewSelectable.prototype.maxItems = function() {
+    return $dataEnemies.length - 3;
+};
+
 
 //=======================================================================
 // Window_Base

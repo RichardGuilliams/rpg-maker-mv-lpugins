@@ -12,6 +12,9 @@ Mythic.Core.version = '1.0.0';
 
 Mythic.Param = Mythic.Param || {};
 
+Mythic.SaveContents = Mythic.SaveContents || {};
+Mythic.GameData = Mythic.GameData || {};
+
 //=============================================================================
 /*: 
 * @plugindesc Creates and Modifies important parameters of the games base objects as well as adds additional functionality for easier development..
@@ -32,6 +35,7 @@ var clear = () => console.clear();
 //=============================================================================
 // Plugin Commands Alias
 //=============================================================================
+
 var Mythic_PluginCommand = Game_Interpreter.prototype.pluginCommand;
 Game_Interpreter.prototype.pluginCommand = function(command, args) {
     if (Mythic.Command[command]) {
@@ -124,6 +128,28 @@ Mythic.Core.ProcessDataMapTags = function(){
     
 };
 
+Mythic.Core.ExtractMetaData = function(obj){
+    const regex = /<MRS_([^>]+)>/g;
+    let match = regex.exec(obj.note);
+ debugger;
+}
+
+
+//=============================================================================
+// Game Data
+//=============================================================================
+
+Mythic.Copy = Mythic.Copy || {};
+
+Mythic.Copy.copyData = function(data){
+    return JSON.parse(JSON.stringify(data));
+}
+
+//=============================================================================
+// Game Data
+//=============================================================================
+
+Mythic.GameData._data = {};
 
 //=============================================================================
 // DataManager
@@ -164,9 +190,28 @@ Mythic.Core.GetDataArray = function(dataArrayType){
 
 
 //=============================================================================
-// Game_CharacterBase
+// Save Load
 //=============================================================================
+Mythic.Core.DataManagerMakeSaveContents = DataManager.makeSaveContents;
+DataManager.makeSaveContents = function() {
+    var contents = Mythic.Core.DataManagerMakeSaveContents.call(this);
+    contents.MRS_Data = Mythic.GameData
+    return contents;
+};
 
+DataManager.extractSaveContents = function(contents) {
+    $gameSystem        = contents.system;
+    $gameScreen        = contents.screen;
+    $gameTimer         = contents.timer;
+    $gameSwitches      = contents.switches;
+    $gameVariables     = contents.variables;
+    $gameSelfSwitches  = contents.selfSwitches;
+    $gameActors        = contents.actors;
+    $gameParty         = contents.party;
+    $gameMap           = contents.map;
+    $gamePlayer        = contents.player;
+    Mythic.GameData = contents.MRS_Data;
+};
 
 //=============================================================================
 // Game_Event
@@ -457,6 +502,17 @@ Mythic.Core.GetTraitValue = function(id, index){
 //================================================================
 // Game_Map
 //================================================================
+Mythic.Core.GetElementFromName = function(arr, name){
+    return arr.find(function(el){
+        if(!el) return
+        if(el.name === name) return el.id
+    })
+
+}
+
+Mythic.Core.GetMapIdFromName = function(name){
+    return Mythic.Core.GetIdFromName($dataMapInfos, name);
+}
 
 Game_Map.prototype.LEFT = 4;
 Game_Map.prototype.RIGHT = 6;
@@ -615,9 +671,9 @@ Game_CharacterBase.prototype.Directions = new Map([
     [8, 'up']
 ]);
 
-//=============================================================================
-// Utils
-//=============================================================================
+// //=============================================================================
+// // Utils
+// //=============================================================================
 
 Mythic.Utils = Mythic.Utils || {};
 
@@ -638,9 +694,7 @@ Mythic.Utils.DistanceBetweenCoords = function(coords1, coords2){
     return this.MakePositive(coords1[0] - coords2[0]) + this.MakePositive(coords1[1] - coords2[1]);
 }
 
-//=============================================================================
 // Value Processing
-//=============================================================================
 
 Mythic.Utils.isNumber = function(value){
     return typeof value === "number";
@@ -689,11 +743,12 @@ Mythic.Utils.isNumberEven = function(number){
 Mythic.Utils.divisibleBy = function(number, divisor){
     return number % divisor === 0;
 }
-//=============================================================================
-// Input
-//=============================================================================
 
-Mythic.Input = Mythic.Input || {};
+//==============================================================================
+// Input
+//==============================================================================
+
+Mythic.Input = {};
 
 Mythic.Input.Keys = new Map([
     ["backspace", 8],
@@ -797,6 +852,9 @@ Mythic.Input.Keys = new Map([
     ["'", 222]
 ]);
 
-//=================================================================
-// Data Type Additions
-//=================================================================
+//================================================================
+// Window
+//================================================================
+Window_Base.prototype.changeFontSize = function(fontSize) {
+    this.contents.fontSize = fontSize;
+};

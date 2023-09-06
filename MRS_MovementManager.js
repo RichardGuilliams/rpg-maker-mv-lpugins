@@ -33,6 +33,7 @@ Mythic.Utils = Mythic.Utils || {};
 //=============================================================================
 // Commands
 //=============================================================================
+Game_Event.prototype.MoveTypes.set('pathfinder', Game_Event.prototype.MoveTypes.size);
 
 Mythic.Command.Chase = function(arguments){
     const [speed, triggerDistance, quitDistance] = arguments;
@@ -43,7 +44,7 @@ Mythic.Command.Chase = function(arguments){
         triggerDistance: Mythic.Utils.ConvertStringToNumber(triggerDistance),
         quitDistance: Mythic.Utils.ConvertStringToNumber(quitDistance),
         chaseStarted: false,
-        chaseMoveType: 2,
+        chaseMoveType: 4,
         walkSpeed: event._moveSpeed,
         frequency: event._moveFrequency,
         moveType: event._moveType
@@ -105,7 +106,7 @@ Game_Event.prototype.StartChase = function() {
     if(!this.moveParams.chaseStarted) this.moveParams.chaseStarted = true;
     if(this.pathfinder) this.pathfinder.restart();
     this._moveSpeed = this.moveParams.chaseSpeed;
-    this._moveType = this.MoveTypes.get('approach');
+    this._moveType = this.MoveTypes.get('pathfinder');
     console.log('chase Started')
     this._moveFrequency = 5;
 }

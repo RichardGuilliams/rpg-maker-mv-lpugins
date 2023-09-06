@@ -47,6 +47,7 @@ Mythic.Command.Pathfinder = function(arguments){
     target = {};
     if(arguments[0] === 'Player') target = $gamePlayer;
     else target = GetEventByName(arguments[0]);
+    if(Mythic.Utils.isObjectEmpty(target)) return console.log('this is not a target');
 
     GetCurrentEvent().createPathfinder();
     GetCurrentEvent().pathfinder.setTarget(target);
@@ -122,11 +123,14 @@ PathNode.prototype.reset = function(){
 };
 
 PathNode.prototype.isNodeOccupied = function(){
-    // debugger;
     // Need to account for if the events have _through set to true
     if($gameMap.eventsXy(this.x, this.y).length > 0) return true;
-    if($gameMap.partyMemberXy(this.x, this.y).length > 0) return true;
+    if($gameMap.partyMemberXy(this.x, this.y).length > 0 && !this.partyMemberTarget()) return true;
     return false;
+}
+
+PathNode.prototype.partyMemberTarget = function(){
+    return $gameMap.partyMemberXy(this.x, this.y).indexOf(this.parent.target) !== -1;
 }
 
 PathNode.prototype.update = function(){
@@ -290,11 +294,23 @@ Pathfinder.prototype.generateSearchList = function(){
     }
     if(this.closedList.indexOf(this.targetNode) > -1) {
         this.createCoordList();
-        this.baseNode = false;
     }
-    else this.findClosestPath();
+    else{
+        this.findClosestPath();
+    } 
+        
     // if the closedList does not contain the target node. we will have to generate a route to the closest node to the target node.
 };
+
+Pathfinder.prototype.selectNewTarget = function(){
+
+};
+
+Pathfinder.prototype.targetLastPartyMember = function(){
+    let followers = $gamePlayer._followers._data;
+    this.setTarget(followers[followers.length - 1]);
+    this.restart();
+}
 
 Pathfinder.prototype.findClosestPath = function(){
     this.currentNode = this.closedList.sort(function(a, b){
@@ -313,6 +329,7 @@ Pathfinder.prototype.findClosestPath = function(){
 Pathfinder.prototype.shortestPathToTarget = function(){
     this.resetNodes();
     this.setStartingNode();
+    this.setTargetNode();
     this.startSearch();
 }
 
@@ -322,13 +339,8 @@ Pathfinder.prototype.restart = function(){
     this.coordList = [];
     this.openList = [];
     this.closedList = [];
-    this.targetX = $gamePlayer._x;
-    this.targetY = $gamePlayer._y;
     this.x = this.parent._x;
     this.y = this.parent._y;
-    this.setStartingNode();
-    this.setTargetNode();
-    this.resetNodes();
     this.shortestPathToTarget();
 };
 
@@ -355,8 +367,6 @@ Game_Event.prototype.createPathfinder = function(){
     this.pathfinder = new Pathfinder();
     this.pathfinder.x = this._x;
     this.pathfinder.y = this._y;
-    this.pathfinder.targetX = $gamePlayer._x;
-    this.pathfinder.targetY = $gamePlayer._y;
     this.pathfinder.parent = this;
     this.directionList = [];
 };
@@ -369,12 +379,6 @@ Game_Event.prototype.update = function(){
     if(this.pathfinder) this.pathfinder.update();
 }
 
-Mythic.Pathfinder.GameEventMoveTowardPlayer = Game_Event.prototype.moveTypeTowardPlayer;
-Game_Event.prototype.moveTypeTowardPlayer = function() {
-    // Mythic.Pathfinder.GameEventMoveTowardPlayer.call(this);
-    this.moveOnPath();
-};
-
 Game_Event.prototype.setDirectionList = function(){
     this.directionList = this.coordsToMovementRoute(this.pathfinder.coordList);
 }
@@ -383,24 +387,6 @@ Game_Event.prototype.moveOnPath = function(){
     if(!this.directionList) this.setDirectionList();
     this.updatePathfindingMovement();
 }
-
-Game_CharacterBase.prototype.updateMove = function() {
-    if (this._x < this._realX) {
-        this._realX = Math.max(this._realX - this.distancePerFrame(), this._x);
-    }
-    if (this._x > this._realX) {
-        this._realX = Math.min(this._realX + this.distancePerFrame(), this._x);
-    }
-    if (this._y < this._realY) {
-        this._realY = Math.max(this._realY - this.distancePerFrame(), this._y);
-    }
-    if (this._y > this._realY) {
-        this._realY = Math.min(this._realY + this.distancePerFrame(), this._y);
-    }
-    if (!this.isMoving()) {
-        this.refreshBushDepth();
-    }
-};
 
 Game_Event.prototype.updatePathfindingMovement = function(){
     //check if event is moving with this.isMoving();
@@ -438,6 +424,7 @@ Game_Event.prototype.isColliding = function(){
 }
 
 Game_Event.prototype.moveTo = function(direction){
+    if(this.pathfinder.target._x !== this.pathfinder.targetNode.x || this.pathfinder.target._y !== this.pathfinder.targetNode.y) this.refreshPath();
     switch(direction){
         //down 
         case 2:
@@ -493,3 +480,51 @@ Game_Event.prototype.checkValidMove = function(){
     if(this.Directions.get(this._direction) === 'down') return
     if(this.Directions.get(this._direction) === 'left') return
 }
+
+Game_Event.prototype.updateSelfMovement = function() {
+    if (!this._locked && this.isNearTheScreen() &&
+            this.checkStop(this.stopCountThreshold())) {
+        switch (this._moveType) {
+        case 1:
+            this.moveTypeRandom();
+            break;
+        case 2:
+            this.moveTypeTowardPlayer();
+            break;
+        case 3:
+            this.moveTypeCustom();
+            break;
+        case 4:
+            this.checkEventTriggerTouch(this._x, this._y);
+            this.moveOnPath();
+            break;
+        }
+    }
+};
+
+Game_Event.prototype.gameCharacterPosWithDirection = function(direction, x, y){
+    var followers = $gamePlayer._followers._data;
+    var party = [$gamePlayer, followers[0], followers[1], followers[2]]
+    // debugger;
+    const partyMemberPos = function(partyMember, x, y){
+        if(partyMember._x === x && partyMember._y === y) {
+            return partyMember;
+        }
+    }
+    // if(direction == 2) return $gamePlayer.pos(x, y + 1);
+    if(direction == 2) return party.find(partyMember => partyMemberPos(partyMember, x, y + 1));
+    if(direction == 8) return party.find(partyMember => partyMemberPos(partyMember, x, y - 1));
+    if(direction == 4) return party.find(partyMember => partyMemberPos(partyMember, x - 1, y));
+    if(direction == 6) return party.find(partyMember => partyMemberPos(partyMember, x + 1, y));;
+}
+
+Mythic.Core.gameEventCheckTriggerTouch = Game_Event.prototype.checkEventTriggerTouch;
+Game_Event.prototype.checkEventTriggerTouch = function(x, y) {
+    if (!$gameMap.isEventRunning()) {
+        if (this._trigger === 2 && this.gameCharacterPosWithDirection(this._direction, x, y)) {
+            if (!this.isJumping() && this.isNormalPriority()) {
+                this.start();
+            }
+        }
+    }
+};
