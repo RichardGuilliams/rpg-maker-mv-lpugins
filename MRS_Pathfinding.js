@@ -23,7 +23,8 @@ Mythic.Utils = Mythic.Utils || {};
 * @help 
 * MRS plugins use a very specific tag format for processing tags and using them to incorporate important parameters into the game.
 * because of this, tags use a special syntax.
-* To enable proximity chasing for event. place <Proximity Chase><Proximity Chase Radius: 8><Proximity Chase Speed: 4.25> 
+* If the event using pathfinding will be chasing the player. Type plugin command: MRS_Pathfinder Player. In the event page.
+* If it is another event the event is chasing, we must use the name of the event so we will use command: MRS_Pathfinder EventName 
 * 
 * Version 1.00:
 * - Finished plugin!
@@ -64,7 +65,6 @@ PathNode.prototype.initialize = function(x, y){
     this.previousNodeIndex = 0;
     this.parentNode = {};
     this.currentDistance = 0;
-    // this.baseNode = false;
     this.pathfinder = {};
     this.passable = false;
     this.x = x;
@@ -125,7 +125,6 @@ PathNode.prototype.reset = function(){
 PathNode.prototype.isNodeOccupied = function(){
     // Need to account for if the events have _through set to true
     if($gameMap.eventsXy(this.x, this.y).length > 0) return true;
-    if($gameMap.partyMemberXy(this.x, this.y).length > 0 && !this.partyMemberTarget()) return true;
     return false;
 }
 

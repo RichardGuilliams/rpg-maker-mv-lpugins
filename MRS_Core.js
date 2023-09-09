@@ -30,7 +30,20 @@ Mythic.GameData = Mythic.GameData || {};
 */
 //=============================================================================
 
+//=============================================================================
+// Console Commands
+//=============================================================================
+
 var clear = () => console.clear();
+
+var logDataAndMapEvents = () => {
+    console.log($dataMap.events);
+    console.log($gameMap._events);
+}
+
+var logGameEvents = () => {
+    console.log($gameMap._events);
+}
 
 //=============================================================================
 // Plugin Commands Alias
@@ -72,6 +85,8 @@ Mythic.Core.InvokePluginCommand = function(commandName){
 //=============================================================================
 // Meta Processing
 //=============================================================================
+
+Mythic.Meta = Mythic.Meta || {};
 
 /**
  *  @param {object}
@@ -125,15 +140,20 @@ Mythic.Core.ProcessDataMapTags = function(){
         if(!Mythic.Core.IsMRSTag(metaProperty)) return console.log(`${metaProperty} is not an MRS tag`);
         console.log($dataMap.meta[metaProperty], metaProperty); 
     })
-    
 };
 
-Mythic.Core.ExtractMetaData = function(obj){
-    const regex = /<MRS_([^>]+)>/g;
-    let match = regex.exec(obj.note);
- debugger;
+Mythic.Core.ProcessNoteTagCommands = function(map){
+    $gameMap['pluginsProcessed'] = true;
+    let notes = map.note.split('\n');
+    notes.map((el) => {
+        if(el.contains('MRS_')) this.ProcessCommandString(el);
+    })
 }
 
+Mythic.Core.ProcessCommandString = function(command){
+    let commands = command.split(' ');
+    $gameMap._interpreter.pluginCommand(commands.splice(0, 1)[0], commands);
+}
 
 //=============================================================================
 // Game Data
@@ -144,6 +164,17 @@ Mythic.Copy = Mythic.Copy || {};
 Mythic.Copy.copyData = function(data){
     return JSON.parse(JSON.stringify(data));
 }
+
+//=============================================================================
+// Time
+//=============================================================================
+
+Mythic.Core.SECONDS = 60;
+Mythic.Core.MINUTES = this.SECONDS * 60;
+Mythic.Core.HOURS = this.MINUTES * 60;
+Mythic.Core.DAYS = this.HOURS * 24;
+Mythic.Core.WEEKS = this.DAYS * 7;
+Mythic.Core.YEARS = this.WEEKS * 52;
 
 //=============================================================================
 // Game Data
@@ -507,11 +538,20 @@ Mythic.Core.GetElementFromName = function(arr, name){
         if(!el) return
         if(el.name === name) return el.id
     })
-
 }
 
 Mythic.Core.GetMapIdFromName = function(name){
-    return Mythic.Core.GetIdFromName($dataMapInfos, name);
+    return parseInt(name.slice(3, 6))
+}
+
+Mythic.Core.GetAllCoordsFrom = function(startingX, endingX, startingY, endingY){
+    let coords = [];
+    for(var i = startingX; i < endingX; i++){
+        for(var j = startingY; j < endingY; j++){
+            coords.push([i, j]);
+        }
+    }
+    return coords;
 }
 
 Game_Map.prototype.LEFT = 4;
@@ -744,6 +784,41 @@ Mythic.Utils.divisibleBy = function(number, divisor){
     return number % divisor === 0;
 }
 
+Mythic.Utils.getLastElement = function(arr){
+    return arr[arr.length - 1];
+}
+
+//==================================================================================
+// Random
+//==================================================================================
+
+Mythic.Random = Mythic.Random || {};
+
+Mythic.Random.getRandomElementByWeight = function(arr) {
+    // Calculate the total weight
+    const weightSum = arr.reduce((sum, element) => sum + element.weight, 0);
+  
+    // Generate a random number between 0 and weightSum
+    const randomValue = Math.random() * weightSum;
+  
+    // Iterate through the array to find the element
+    let currentWeight = 0;
+    for (const element of arr) {
+      currentWeight += element.weight;
+      if (randomValue <= currentWeight) {
+        return element;
+      }
+    }
+  
+    // This should never happen if the weights are properly defined
+    return null;
+}
+
+Mythic.Random.getRandomElementInArray = function(arr) {
+    return arr[Math.floor(Math.random() * arr.length)]
+}
+
+
 //==============================================================================
 // Input
 //==============================================================================
@@ -858,3 +933,13 @@ Mythic.Input.Keys = new Map([
 Window_Base.prototype.changeFontSize = function(fontSize) {
     this.contents.fontSize = fontSize;
 };
+
+Mythic.Core.logSomething = function(){
+    console.log('something')
+}
+
+Mythic.Core.aliasLogSomething = Mythic.Core.logSomething;
+Mythic.Core.logSomething = function(){
+    console.log('log');
+    Mythic.Core.aliasLogSomething.call(this);    
+}
