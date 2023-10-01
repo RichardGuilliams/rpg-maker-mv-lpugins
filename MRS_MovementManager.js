@@ -129,6 +129,63 @@ Game_Map.prototype.partyMemberXy = function(x, y){
     })
 }
 
+// TODO: create a proximity movement prototype that will make the parent event move randomly in a certain proximity of a target distance.
+//==================================================================================================================
+// Movement
+//==================================================================================================================
 
+function Movement(){
+    this.initialize.apply();
+}
+
+Movement.prototype.initialize = function(){
+
+}
+
+Movement.prototype.move = function(){
+    
+}
+
+//==================================================================================================================
+// Proximity Movement
+//==================================================================================================================
+
+function MovementProximity(){
+    this.initialize.apply(this, arguments);
+}
+
+MovementProximity.prototype = Object.create(Movement.prototype);
+MovementProximity.prototype.constructor = MovementProximity;
+
+MovementProximity.prototype.initialize = function(target, minDistance, maxDistance){
+    this.target = target;
+    this.minDistance = minDistance;
+    this.maxDistance = maxDistance;
+}
+
+MovementProximity.prototype.move = function(){
+    // we will need to no the current distance to the target as well as which direction that target lies in.
+    // find out which directions are not available based on distance to the target and remove them from the options for random selection
+    // if the target has moved out of range from the event, we will need to calculate the distance it will take to get withing the proximity range.
+    // If we are in range proceed.
+    // select a random index for the newly create direction array.
+    //Implement switch and pass the chosen direction into the switch.
+    // move the unit in the appropriate direction.
+}
+
+//==================================================================================================================
+// Radial Movement
+//==================================================================================================================
+
+function MovementRadial(){
+    this.initialize.apply(this, arguments);
+}
+
+MovementRadial.prototype = Object.create(Movement.prototype);
+MovementRadial.prototype.constructor = MovementRadial;
+
+MovementRadial.prototype.initialize = function(){
+    
+}
 
 

@@ -1,5 +1,5 @@
 //=============================================================================
-// Mythic Realms Studios- Core
+// Mythic Realms Studios - Core
 // MRS_Core.js
 //=============================================================================
 
@@ -156,7 +156,7 @@ Mythic.Core.ProcessCommandString = function(command){
 }
 
 //=============================================================================
-// Game Data
+// Copy
 //=============================================================================
 
 Mythic.Copy = Mythic.Copy || {};
@@ -169,12 +169,13 @@ Mythic.Copy.copyData = function(data){
 // Time
 //=============================================================================
 
+
 Mythic.Core.SECONDS = 60;
-Mythic.Core.MINUTES = this.SECONDS * 60;
-Mythic.Core.HOURS = this.MINUTES * 60;
-Mythic.Core.DAYS = this.HOURS * 24;
-Mythic.Core.WEEKS = this.DAYS * 7;
-Mythic.Core.YEARS = this.WEEKS * 52;
+Mythic.Core.MINUTES = Mythic.Core.SECONDS * 60;
+Mythic.Core.HOURS = Mythic.Core.MINUTES * 60;
+Mythic.Core.DAYS = Mythic.Core.HOURS * 24;
+Mythic.Core.WEEKS = Mythic.Core.DAYS * 7;
+Mythic.Core.YEARS = Mythic.Core.WEEKS * 52;
 
 //=============================================================================
 // Game Data
@@ -197,6 +198,42 @@ DataManager.isDatabaseLoaded = function() {
     Mythic.Core.PopulateTraitMaps();
     return true;
 };
+
+//=============================================================================
+// Eventing System
+//=============================================================================
+
+Mythic.Core.EventingSystemMap = new Map([
+    ["Message", 101],
+    ["Game Progression", 102],
+    ["Flow Control", 103],
+    ["Party", 104],
+    ["Actor", 105],
+    ["Movement", 201],
+    ["Character", 202],
+    ["Picture", 203],
+    ["Timing", 204],
+    ["Screen", 205],
+    ["Audio & Video", 206],
+    ["Scene Control", 301],
+    ["System Settings", 302],
+    ["Map", 302],
+    ["Battle", 303],
+    ["Advanced", 304]
+]);
+
+Mythic.Core.BattleProcessingMap = new Map([
+    ["Troop", 1],
+    ["Can Lose", 2],
+    ["Can Escape", 3]
+]);
+
+Mythic.Core.BattleProcessingTroopMap = new Map([
+    ["Direct Designation", 0],
+    ["Designation With Variable", 1],
+    ["Same As Random Encounter", 2],
+
+]);
 
 //=============================================================================
 // Game Data Arrays
@@ -366,10 +403,11 @@ Mythic.Core.GetLearningSkillId = function(id, index){
 
 //================================================================
 
-Mythic.Core.PopulateMapFromArray = function(arr, map){
+Mythic.Core.PopulateMapFromArray = function(arr, map, propertyName){
     arr.forEach((el, i) => {
         if(i == 0) return;
-        map.set(el, i);
+        if(!propertyName) map.set(el, i)
+        !propertyName ? map.set(el, i) : map.set(el[propertyName], i)
     })
 }
 
@@ -399,8 +437,13 @@ Mythic.Core.PopulateTraitMaps = function(){
     
     //State Types
     Mythic.Core.PopulateMapFromArray($dataStates, Mythic.Core.StateTypes);
+
+    //Data Troops
+    Mythic.Core.PopulateMapFromArray($dataTroops, Mythic.Core.DataTroopsMap, 'name'); 
     
 }
+
+Mythic.Core.DataTroopsMap = new Map([]);
 
 
 Mythic.Core.TraitTypes = new Map([
@@ -530,6 +573,10 @@ Mythic.Core.GetTraitValue = function(id, index){
     return Mythic.Core.GetClassTraits(id)[index].value;
 }
 
+Mythic.Core.GetCharacterSprites = function(){
+    return SceneManager._scene.children[0]._characterSprites;
+}
+
 //================================================================
 // Game_Map
 //================================================================
@@ -538,6 +585,10 @@ Mythic.Core.GetElementFromName = function(arr, name){
         if(!el) return
         if(el.name === name) return el.id
     })
+}
+
+Mythic.Core.GetElementIdFromName = function(arr, name){
+    return this.GetElementFromName(arr, name).id;
 }
 
 Mythic.Core.GetMapIdFromName = function(name){
@@ -679,13 +730,37 @@ Game_Event.prototype.ChangeMoveSpeed = function(moveSpeed){
 }
 
 //================================================================
+// Battle 
+//================================================================
+
+Mythic.Battle = Mythic.Battle || {};
+
+Mythic.Battle.actorSprites = function(){
+    BattleManager._spriteSet._actorSprites;
+}
+
+Mythic.Battle.enemySprites = function(){
+    BattleManager._spriteSet._enemySprites;
+}
+
+
+
+//================================================================
 // Game_Actor
 //================================================================
+
 
 
 //================================================================
 // Game_Player
 //================================================================
+
+
+
+//================================================================
+// Game_CharacterBase
+//================================================================
+
 
 
 //================================================================
@@ -710,6 +785,82 @@ Game_CharacterBase.prototype.Directions = new Map([
     [2, 'down'],
     [8, 'up']
 ]);
+
+Game_Map.prototype.yWithDirection = function(y, d) {
+    return y + (d === 2 ? 1 : d === 8 ? -1 : 0);
+};
+
+Game_Map.prototype.roundXWithDirection = function(x, d) {
+    return this.roundX(x + (d === 6 ? 1 : d === 4 ? -1 : 0));
+};
+
+Game_CharacterBase.prototype.tileBehind = function(){
+    switch(this._direction){
+        //down 
+        case 2:
+            return {x: this._x, y: this._y - 1}
+        //up 
+        case 8:
+            return {x: this._x, y: this._y + 1}            
+        //left 
+        case 4:
+            return {x: this._x + 1, y: this._y}
+        //right 
+        case 6:
+            return {x: this._x - 0, y: this._y}
+    }
+};
+
+Game_CharacterBase.prototype.tileInFront = function(){
+    switch(this._direction){
+        //down 
+        case 2:
+            return {x: this._x, y: this._y + 1}
+        //up 
+        case 8:
+            return {x: this._x, y: this._y - 1}            
+        //left 
+        case 4:
+            return {x: this._x - 1, y: this._y}
+        //right 
+        case 6:
+            return {x: this._x + 0, y: this._y}
+    }
+};
+
+Game_CharacterBase.prototype.tileLeft = function(){
+    switch(this._direction){
+        //down 
+        case 2:
+            return {x: this._x + 1, y: this._y}
+        //up 
+        case 8:
+            return {x: this._x - 1, y: this._y}            
+        //left 
+        case 4:
+            return {x: this._x, y: this._y + 1}
+        //right 
+        case 6:
+            return {x: this._x, y: this._y - 1}
+    }
+};
+
+Game_CharacterBase.prototype.tileRight = function(){
+    switch(this._direction){
+        //down 
+        case 2:
+            return {x: this._x - 1, y: this._y}
+        //up 
+        case 8:
+            return {x: this._x + 1, y: this._y}            
+        //left 
+        case 4:
+            return {x: this._x, y: this._y - 1}
+        //right 
+        case 6:
+            return {x: this._x, y: this._y + 1}
+    }
+};
 
 // //=============================================================================
 // // Utils
@@ -742,6 +893,10 @@ Mythic.Utils.isNumber = function(value){
 
 Mythic.Utils.isString = function(value){
     return typeof value === "string";
+}
+
+Mythic.Utils.stringToBoolean = function(value){
+    return value === true || value === false
 }
 
 Mythic.Utils.isBoolean = function(value){
@@ -788,18 +943,41 @@ Mythic.Utils.getLastElement = function(arr){
     return arr[arr.length - 1];
 }
 
+
+Mythic.Utils.getAllEventsInProximity = function(proximity, x, y){
+    let events = [];
+    for (let j = x - proximity; j < x + proximity; j++){
+        for (let i = y - proximity; i < y + proximity; i++){
+            if($gameMap.eventsXy(j, i).length) $gameMap.eventsXy(j, i).forEach(el => events.push(el));
+        }    
+    }
+    return events;
+}
+
 //==================================================================================
 // Random
 //==================================================================================
 
 Mythic.Random = Mythic.Random || {};
 
+Mythic.Random.random = function(number){
+    return Math.floor(Math.random() * number);
+}
+
+Mythic.Random.number = function(number){
+    return  this.random(number);
+}
+
+Mythic.Random.numberWithMin = function(number, min){
+    return this.random(number) + min;
+}
+
 Mythic.Random.getRandomElementByWeight = function(arr) {
     // Calculate the total weight
     const weightSum = arr.reduce((sum, element) => sum + element.weight, 0);
   
     // Generate a random number between 0 and weightSum
-    const randomValue = Math.random() * weightSum;
+    const randomValue = this.random(weightSum);
   
     // Iterate through the array to find the element
     let currentWeight = 0;
@@ -930,16 +1108,62 @@ Mythic.Input.Keys = new Map([
 //================================================================
 // Window
 //================================================================
+
 Window_Base.prototype.changeFontSize = function(fontSize) {
     this.contents.fontSize = fontSize;
 };
 
-Mythic.Core.logSomething = function(){
-    console.log('something')
+//================================================================
+// Prototypes
+//================================================================
+
+function StateMachine(){
+    this.initialize.apply(this, arguments);
 }
 
-Mythic.Core.aliasLogSomething = Mythic.Core.logSomething;
-Mythic.Core.logSomething = function(){
-    console.log('log');
-    Mythic.Core.aliasLogSomething.call(this);    
+StateMachine.prototype.States = new Map([]);
+
+StateMachine.prototype.initialize = function(){
+    this._states = [];
+    this._currentState = '';
 }
+
+StateMachine.prototype.addState = function(newState){
+    this._states.push(newState);
+}
+
+StateMachine.prototype.getState = function(){
+
+}
+
+StateMachine.prototype.update = function(){
+    this._states.find(function(state, index, states){
+        if(this._currentState === state.name) return state.update();
+    });
+}
+
+function State(){
+    this.initialize.apply(this, arguments);
+}
+
+State.prototype.initialize = function(){
+    this._name = '';
+    this._currentPhase = '';
+    this._phases = '';
+}
+
+State.prototype.update = function(){};
+
+//Switch
+function Switch(){
+    this._cases = new Map([]);
+};
+
+Switch.prototype.addCase = function(value, expression){
+    this._cases.set(value, expression);
+};
+
+Switch.prototype.checkCase = function(value){
+    return this._cases.get(value)();
+}
+

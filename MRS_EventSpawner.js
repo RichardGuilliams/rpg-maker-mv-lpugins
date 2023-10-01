@@ -25,7 +25,7 @@ Mythic.GameData = Mythic.GameData || {};
 * To add a spawner to the map or to an event you must add plugin command MRS_Spawner to either
 * the map or the events event page.
 * 
-* Version 1.00:
+* Version 1.00: 
 * - Finished plugin!
 */
 //=============================================================================
@@ -34,9 +34,9 @@ Mythic.GameData = Mythic.GameData || {};
 // Commands
 //=============================================================================
 
-Mythic.Command.MRS_LoadMapData = function(arguments){
+Mythic.Command.MRS_LoadMapData = function(args){
     var xhr = new XMLHttpRequest();
-    var url = 'data/Map' + Mythic.Core.GetMapFromName(arguments[0]) + '.json';
+    var url = 'data/Map' + Mythic.Core.GetMapFromName(args[0]) + '.json';
     xhr.open('GET', url);
     xhr.overrideMimeType('application/json');
     xhr.onload = function() {
@@ -65,43 +65,46 @@ Mythic.Utils.formatNumberWithLeadingZeros = function(number, minLength) {
     return leadingZeros + numberString;
   }
 
-Mythic.Command.MRS_SaveMap = function(arguments){
+Mythic.Command.MRS_SaveMap = function(args){
     Mythic.EventSpawner.updateMap();
 }
 
-Mythic.Command.MRS_Spawner = function(arguments){
+Mythic.Command.MRS_Spawner = function(args){
     let event = Mythic.EventSpawner.MapOrEvent();
-    // Prox Params = tiner limit minDistance, maxDistance
+    // Prox Params = timer limit minDistance, maxDistance
     // else Params = timer limit
-    if(arguments[0] === 'Proximity') return event.MRS_Spawner = new ProximitySpawner(event, parseInt(arguments[1]), parseInt(arguments[2]), parseInt(arguments[3]), parseInt(arguments[4]),);
-    event.MRS_Spawner = new Spawner(event, parseInt(arguments[0]), parseInt(arguments[1]));
+    if(args[0] === 'Proximity') return event.MRS_Spawner = new ProximitySpawner(event, parseInt(args[1]), parseInt(args[2]), parseInt(args[3]), parseInt(args[4]),);
+    event.MRS_Spawner = new Spawner(event, parseInt(args[0]), parseInt(args[1]));
 }
 
-Mythic.Command.MRS_SpawnTimer = function(arguments){
+Mythic.Command.MRS_SpawnTimer = function(args){
     let event = Mythic.EventSpawner.MapOrEvent();
-    event.MRS_Spawner.countdownFrom = parseInt(arguments[0]);
+    event.MRS_Spawner.countdownFrom = parseInt(args[0]);
     event.MRS_Spawner.setTimer(event.MRS_Spawner.countdownFrom);
 }
 
-Mythic.Command.MRS_SpawnLimit = function(arguments){
+Mythic.Command.MRS_SpawnLimit = function(args){
     let event = Mythic.EventSpawner.MapOrEvent();
-    event.MRS_Spawner.limit = parseInt(arguments[0]);
+    event.MRS_Spawner.limit = parseInt(args[0]);
 }
 
-Mythic.Command.MRS_AddSpawn = function(arguments){
-    let name = arguments[0];
-    let limit = parseInt(arguments[1]);
-    let weight = parseInt(arguments[2]);
-    let regions = arguments[3].split('-').map(el => parseInt(el));
+Mythic.Command.MRS_AddSpawn = function(args){
+    let name = args[0];
+    let limit = parseInt(args[1]);
+    let weight = parseInt(args[2]);
+    let regions = args[3].split('-').map(el => parseInt(el));
     let event = Mythic.EventSpawner.MapOrEvent();
-    let newSpawn = { name, limit, weight, regions, count: 0 };
-    event.MRS_Spawner.spawns.push(newSpawn);
+    let spawn = { name, limit, weight, regions, count: 0 };
+    event.MRS_Spawner.addSpawn(spawn.name, spawn.limit, spawn.weight, spawn.regions);
 }
 
-Mythic.Command.MRS_EraseSpawn = function(arguments){
-    //TODO Sprite not being erased from the screen properly. Need to figure out how to re draw the tile over top of the sprite or something.
+Mythic.Command.MRS_EraseSpawn = function(args){
+    let sprites = SceneManager._scene.children[0]._characterSprites
+    let sprite = sprites.find(el => el._character._eventId === GetCurrentEvent()._eventId);
+    let index = sprites.indexOf(sprite);
+    sprites.splice(index, 1);
+    SceneManager._scene._spriteset._characterSprites.splice(index, 1);
     Mythic.EventSpawner.eraseEvent($gameMap._events.indexOf(GetCurrentEvent()));
-    SceneManager._scene.createSpriteset();
 }
 
 //=============================================================================
@@ -190,6 +193,7 @@ Mythic.EventSpawner.isSpawn = function(object){
 Mythic.EventSpawner.eraseEvent = function(index){
     // Get the event object
     var event = $gameMap.event(index);
+    event.spawner.updateSpawnCounts(event);
     
     // Check if the event exists
     if (event) {
@@ -229,9 +233,6 @@ Mythic.EventSpawner.getSpawnEventByName = function(eventName){
     return Mythic.Core.GetElementFromName(Mythic.GameData.spawnEvents, eventName);
 }
 
-Mythic.EventSpawner.createEvent = function(eventName){
-    return Mythic.Copy.copyData(Mythic.EventSpawner.getSpawnEventByName(eventName));
-};
 
 Mythic.EventSpawner.addEventSprite = function(event){
     SceneManager._scene.children[0].createCharacters();
@@ -262,6 +263,10 @@ Mythic.EventSpawner.rebuildEventArrays = function(arr){
     this.rebuildEventArray($gameMap._events);
     this.equalizeEventIds();
 }
+
+Mythic.EventSpawner.createEvent = function(eventName){
+    return Mythic.Copy.copyData(Mythic.EventSpawner.getSpawnEventByName(eventName));
+};
 
 Mythic.EventSpawner.SpawnEvent = function(eventName, x, y){
     this.rebuildEventArrays();
@@ -315,8 +320,8 @@ Spawner.prototype.initialize = function(event, timer, limit){
     this.spawns = [];
 }
 
-Spawner.prototype.addSpawn = function(name, region, limit, chance){
-    let newSpawn = { name, region, limit, chance, count: 0 };
+Spawner.prototype.addSpawn = function(name, limit, weight, regions){
+    let newSpawn = { name, regions, limit, weight, count: 0, activeSpawns: []};
     this.spawns.push(newSpawn);
 }
 
@@ -334,19 +339,21 @@ Spawner.prototype.spawn = function(){
     let spawns = this.spawns.filter((el, i) => el.count < el.limit);
     let event = Mythic.Random.getRandomElementByWeight(spawns);
     if(!event) return
-    this.updateCount(event);
     let coords = this.getRandomCoordsFromRegions(event);
     if(coords){
         Mythic.EventSpawner.SpawnEvent(event.name, coords.x, coords.y);
         Mythic.Utils.getLastElement($gameMap._events).spawner = this;
-        console.log(this.getSpawnsByName(event.name));
+        //TODO
+        this.spawns.find(el => el === event).activeSpawns = this.getSpawnsByName(event.name);
+        // console.log(this.getSpawnsByName(event.name));
+        this.updateCount(event);
     }
     else console.log('No available tiles to spawn');
 }
 
 Spawner.prototype.updateCount = function(event){
-    event.count += 1;
-    this.count += 1;
+    event.count = this.getSpawnsByName(event.name).length;
+    this.count = this.getChildren().length;
 };
 
 Spawner.prototype.getCount = function(){
@@ -370,7 +377,15 @@ Spawner.prototype.getRandomCoordsFromRegions = function (event) {
     return { x: coords[0], y: coords[1] }; 
 }
 
+Spawner.prototype.updateSpawnCounts = function(){
+    this.spawns.forEach( spawn => {
+        spawn.count = this.getSpawnsByName(spawn.name).length;
+    });
+    this.count = this.getChildren().length;
+};
+
 Spawner.prototype.update = function(){
+    this.updateSpawnCounts();
     if(this.count < this.limit) this.updateTimer();
 };
 
