@@ -25,7 +25,7 @@ Mythic.GameData = Mythic.GameData || {};
 * because of this, tags use a special syntax.
 * 
 * 
-* Version 1.00:
+* Version 1.0.0:
 * - Finished plugin!
 */
 //=============================================================================

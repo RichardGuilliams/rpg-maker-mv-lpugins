@@ -185,7 +185,9 @@ BattleManager.updateActionPhase = function(){
 }
 
 BattleManager.updateAttack = function(){
-    if(!AttackManager.started) AttackManager.started = true;
+    if(!AttackManager.started){
+        AttackManager.setup();
+    } 
     AttackManager.update();
 }
 
@@ -222,7 +224,7 @@ BattleManager.updateSRTETurnCount = function(){
 
 BattleManager.processTurn = function() {
     var subject = this._subject;
-    // if(subject instanceof Game_Enemy) this.prepare
+    this.makeActionOrders();
     if(this._battlers[this._turn] instanceof Game_Enemy && this._battlers[this._turn]._actionState !== 'done') this._battlers[this._turn].makeActions(); 
     var action = subject.currentAction();
     if (action) {
@@ -237,7 +239,7 @@ BattleManager.processTurn = function() {
         this._logWindow.displayAutoAffectedStatus(subject);
         this._logWindow.displayCurrentState(subject);
         this._logWindow.displayRegeneration(subject);
-        this._subject = this.getNextSubject();
+        // this._subject = this.getNextSubject();
     }
 };
 
@@ -267,6 +269,7 @@ BattleManager.startAction = function() {
 };
 
 BattleManager.updateAction = function() {
+    if(this._subject instanceof Game_Enemy) this._subject.makeActions(); 
     let action = this._actionBattlers[0]._actions[0];
     if(action._item._itemId === 1) this._actionPhase = 'attack';
     this.updateActionPhase();
@@ -410,22 +413,18 @@ AttackManager.initialize = function(){
     this._activeEnemySprite = {};
     this._inactiveActorSprites = [];
     this._inactiveEnemySprites = [];
-    this._actorCenterX = 0;
-    this._actorCenterY = 0;
-    this._enemyCenterX = 0;
-    this._enemyCenterY = 0;
+    this._delay = 0;
+    this._delayTimer = 0;
 }
 
 AttackManager.setup = function() {
     this._started = true;
-    this._actorCenterX = Graphics.width - Graphics.width / 4;
-    this._enemyCenterX = Graphics.width - (Graphics.width / 4) * 3;
-    this._actorCenterY = Graphics.height / 2;
-    this._enemyCenterY = Graphics.height / 2;
     this._activeActorSprite = this.getActiveActorSprite();
     this._activeEnemySprite = this.getActiveEnemySprite();
     this._inactiveActorSprites = this.getInactiveActorSprites();
     this._inactiveEnemySprites = this.getInactiveEnemySprites();
+    this._delay = 3 * Mythic.Core.SECONDS;
+    this.delayTimer = this._delay;
 };
 
 AttackManager.getInactiveActorSprites = function() {
@@ -436,7 +435,12 @@ AttackManager.getInactiveEnemySprites = function() {
     return Mythic.Core.getEnemySprites().filter(el => el._battler !== this.getTargetEnemy());
 }
 
+AttackManager.getSubjectActor = function(){
+    return $gameActors._data[$gameParty._actors[BattleManager._action._subjectActorId]]
+}
+
 AttackManager.getActiveActorSprite = function() {
+    if(BattleManager._action && BattleManager._subject instanceof Game_Enemy) return Mythic.Core.getActorSprites().find(el => el._actor === this.getSubjectActor()); 
     return Mythic.Core.getActorSprites().find(el => el._actor === BattleManager._actionBattlers[0]);
 }
 
@@ -445,6 +449,7 @@ AttackManager.getActiveEnemySprite = function(){
 }
 
 AttackManager.getTargetIndex = function(){
+    if(BattleManager._actionBattlers[0]._actions[0]._targetIndex < 0) return BattleManager._actionBattlers[0]._actions[0]._subjectEnemyIndex;
     return BattleManager._actionBattlers[0]._actions[0]._targetIndex;
 }
 
@@ -463,8 +468,10 @@ Mythic.Core.getEnemySprites = function(){
 
 AttackManager.updatePhase = function() {
     switch(this._phase) {
-        case 'start': this.start();
-        case 'attack': this.attack();
+        case 'start': return this.start();
+        case 'attack': return this.updateAttack();
+        case 'end': return this.end();
+        case 'none': return console.log('attack phase over')
     }
 }
 
@@ -472,7 +479,7 @@ AttackManager.updatePhase = function() {
 // Mythic.Battle.getAllActorSprites()[1]._actor
 // BattleManager._actionBattlers[0]
 
-AttackManager.updateSpritePlacement = function() {
+AttackManager.moveSpritesToBattlePosition = function() {
     let actors = this._inactiveActorSprites.map(el => el.updateMoveOffScreen());    
     let enemies = this._inactiveEnemySprites.map(el => el.updateMoveOffScreen());
     let actor = this._activeActorSprite.updateMoveToAttackPosition();
@@ -482,13 +489,46 @@ AttackManager.updateSpritePlacement = function() {
     return actorsFinished && enemiesFinished && actor && enemy;
 }
 
-AttackManager.start = function(){
-    if(!this._started) this.setup();
-    if(this.updateSpritePlacement()) this._phase = 'attack'
+AttackManager.moveAllSpritesToOrigin = function() {
+    let actors = this._inactiveActorSprites.map(el => el.updateMoveToBase());    
+    let enemies = this._inactiveEnemySprites.map(el => el.updateMoveToBase());
+    let actor = this._activeActorSprite.updateMoveToBase();
+    let enemy = this._activeEnemySprite.updateMoveToBase();
+    let actorsFinished = actors.sort()[0];
+    let enemiesFinished = enemies.sort()[0];
+    return actorsFinished && enemiesFinished && actor && enemy;
 }
 
-AttackManager.attack = function(){
+AttackManager.start = function(){
+    if(!this._started) {
+        this.setup();
+        this._started = true;
+    }
+    if(this.moveSpritesToBattlePosition()) this._phase = 'attack'
+}
+
+AttackManager.end = function(){
+    // if(!this._started) this.setup();
+    if(this.moveAllSpritesToOrigin()) {
+        this._phase = 'start'
+        this._started = false;
+        BattleManager._actionBattlers[0].removeCurrentAction();
+        BattleManager._subject = null;
+        // BattleManager._subject._actions = [];
+        BattleManager._phase = 'turn';
+    }
+}
+
+AttackManager.updateAttack = function(){
+    // increment the current attack number (starts at 0. is set to 1 at this point and then goes up to 5)
+    // if the attack number is less than 6 run code;
+    // bring up the button prompt for the attack
+    // when the button is hit start the attack animation
+    // 
+    // update juggle 
+
     console.log('Attacking');
+    this._phase = 'end';
 }
 
 AttackManager.update = function(){
@@ -511,6 +551,17 @@ Scene_SRTE_Battle.prototype.updateBattleProcess = function() {
     }
 };
     
+// {
+//     "_subjectActorId": 1,
+//     "_subjectEnemyIndex": -1,
+//     "_forcing": false,
+//     "_item": {
+//         "_dataClass": "skill",
+//         "_itemId": 1
+//     },
+//     "_targetIndex": 0
+// }
+
 Scene_SRTE_Battle.prototype.onEnemyOk = function() {
     var action = BattleManager.inputtingAction();
     action.setTarget(this._enemyWindow.enemyIndex());
@@ -565,6 +616,7 @@ Sprite_Enemy.prototype.initialize = function(battler){
     this._offscreenDistance = -200;
     this._centerX = Graphics.width / 4 + 60;
     this._centerY = Graphics.height / 2;
+    this.setHome(this._homeX, this._homeY);
 }
 
 Sprite_Battler.prototype.moveToDestination = function(destination, axis){
